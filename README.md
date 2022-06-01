@@ -5,7 +5,3 @@
 
 ### Usage
 `go get -u github.com/runaek/clap` (requires go1.18)
-
-
-### Installation 
-Install using go: 
