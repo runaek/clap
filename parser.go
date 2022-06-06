@@ -7,9 +7,12 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/posener/complete/v2"
 	"github.com/posener/complete/v2/predict"
+	"github.com/runaek/clap/pkg/parse"
 	"go.uber.org/zap"
+	"io"
 	"os"
 	"strings"
+	"text/template"
 )
 
 type ErrorHandling int
@@ -20,11 +23,25 @@ const (
 	PanicOnError    = ErrorHandling(flag.PanicOnError)
 )
 
-// HandleError handles some error according to the ErrorHandling, returning true if the error is not nil, otherwise false
-// is returned.
-func HandleError(eh ErrorHandling, e error) bool {
+// HandleError handles some error according to the ErrorHandling, returns false if e == nil, otherwise what/whether the
+// function returns is determined by the ErrHandling mode:
+//
+//	ContinueOnError => return true
+//	PanicOnError    => panic with error message
+//  ExitOnError     => write error message to w and exit 1
+func HandleError(w io.Writer, eh ErrorHandling, e error) bool {
 	if e == nil {
 		return false
+	}
+
+	me, isMultiErr := e.(*multierror.Error)
+
+	if isMultiErr {
+		e = me.ErrorOrNil()
+
+		if e == nil {
+			return false
+		}
 	}
 
 	switch eh {
@@ -33,77 +50,115 @@ func HandleError(eh ErrorHandling, e error) bool {
 	case PanicOnError:
 		panic(e)
 	case ExitOnError:
-		_, _ = fmt.Fprint(os.Stderr, e)
+		_, _ = fmt.Fprint(w, e)
 		os.Exit(1)
 	default:
-		panic("invalid error handling method")
+		panic(fmt.Errorf("invalid error handling detected whilst handling error: %w", e))
 	}
 
 	return true
 }
 
-// New is a constructor for a new command-line argument Parser.
-func New(name string, errHandling ErrorHandling, elements ...any) (*Parser, error) {
+// New creates a new command-line argument Parser with ErrorHandling mode ContinueOnError.
+func New(name string) *Parser {
+	return NewParser(name, ContinueOnError)
+}
 
-	s := newParser(name, errHandling)
+// NewUsing is a constructor for a Parser at a specific ErrorHandling level.
+//
+// If no elements are supplied, NewUsing is guaranteed to return a nil error.
+//
+// TODO: If elements are supplied, extra Arg(s) are attempted to be derived from each element.
+func NewUsing(name string, errHandling ErrorHandling, elements ...any) (*Parser, error) {
+
+	s := NewParser(name, errHandling)
 
 	if len(elements) == 0 {
 		return s, nil
 	}
 
-	return s, s.Err()
+	return s, s.Valid()
 }
 
-// Must is a constructor for a new command-line argument Parser which will panic if the constructor fails.
 func Must(name string, errHandling ErrorHandling, elements ...any) *Parser {
-	p, err := New(name, errHandling, elements...)
+	p, err := NewUsing(name, errHandling, elements...)
 
-	if err != nil {
-		panic(err)
+	if HandleError(p.Stderr, p.ErrorHandling, err) {
+		_, _ = fmt.Fprintln(p.Stderr, err)
+		os.Exit(1)
 	}
 
 	return p
 }
 
-func newParser(n string, eh ErrorHandling) *Parser {
+// NewParser is a constructor for a new command-line argument Parser.
+func NewParser(n string, errHandling ErrorHandling) *Parser {
 
-	constrErr := new(multierror.Error)
-	constrErr.ErrorFormat = func(es []error) string {
-		hdr := fmt.Sprintf("caught %d error(s) setting up parser %q:\n\t", len(es), n)
+	validationErr := new(multierror.Error)
+	validationErr.ErrorFormat = func(es []error) string {
+		hdr := fmt.Sprintf("invalid parser state [%d error(s) occurred]:\n", len(es))
 
 		msgs := make([]string, len(es))
 
 		for i, e := range es {
-			msgs[i] = fmt.Sprintf("* %s", e)
+			msgs[i] = fmt.Sprintf("\t* %s", e)
 		}
 
-		return hdr + strings.Join(msgs, "\n\t")
+		return hdr + strings.Join(msgs, "\n")
 	}
 
 	return &Parser{
-		name:       n,
-		eh:         eh,
-		Set:        NewSet(),
-		flagValues: map[string][]string{},
-		keyValues:  map[string][]string{},
-		parseErr:   new(multierror.Error),
+		Name:          n,
+		Set:           NewSet(),
+		ErrorHandling: errHandling,
+		Stdout:        os.Stdout,
+		Stdin:         os.Stdin,
+		Stderr:        os.Stderr,
+		flagValues:    map[string][]string{},
+		keyValues:     map[string][]string{},
+		argState:      map[argName]error{},
+		vErr:          validationErr,
 	}
 }
 
-// A Parser Contains and parses a number of flag, key-value or positional inputs from the command-line.
+// A Parser contains and parses a number of flag, key-value or positional inputs from the command-line.
+//
+// Once all desired Arg have been added to the Parser (see Add), the arguments can be parsed using the Parse method.
+//
+// By default, a Parser will read from os.Stdin and write to os.Stdout and os.Stderr - these fields can be changed as
+// required to any FileReader or FileWriter.
 type Parser struct {
-	*Set        // underlying Set for the Parser - holding all the Arg types the Parser is responsible for
-	Shift  int  // Shift shifts the Parser along, ignoring the first 'shifted' arguments
-	Strict bool // Strict defines whether unrecognised tokens (e.g. flag/keys) are ignored, or return UnrecognisedInput
+	// Name for the Parser
+	Name string
 
-	name             string              // arbitrary name of the Parser - for debugging purposes
-	eh               ErrorHandling       // type of error handling for the Parser
+	// ErrorHandling mode to be used by the Parser
+	ErrorHandling ErrorHandling
+
+	// underlying Set for the Parser - holding all the Arg types the Parser is responsible for
+	*Set
+	// Shift shifts the Parser along, ignoring the first 'shifted' arguments
+	Shift int
+	// Strict defines whether unrecognised tokens (e.g. flag/keys) are ignored, or return ErrUnidentified
+	Strict bool
+
+	// SuppressUsage stops the Usage from being written out when an error occurs
+	SuppressUsage bool
+
+	// SuppressValidationErr stops validation errors (i.e. adding arguments to the Parser) from breaking
+	// the program.
+	SuppressValidation bool
+
+	Stdin  FileReader
+	Stdout FileWriter
+	Stderr FileWriter
+
 	positionalValues []string            // raw positional arguments from the latest Parse call
 	keyValues        map[string][]string // raw key-value arguments from the latest Parse call
 	flagValues       map[string][]string // raw flag-value arguments from the latest Parse call
 
-	parseErr *multierror.Error // parserErr contains the error(s) for the *latest* call to Parse
-	setErr   *multierror.Error // constrErr contains any errors caught whilst adding arguments to the Parser
+	argState map[argName]error // contains errors for each argName during Parse
+	pErr     error             // pErr is the error for the *latest* call to Parse
+	vErr     *multierror.Error // vErr are validation errors caught whilst adding arguments to the Parser (Set)
 }
 
 // RawPositions returns the raw ordered positional arguments detected by the Parser.
@@ -125,16 +180,16 @@ func (p *Parser) RawKeyValues() map[string][]string {
 func (p *Parser) Add(args ...Arg) *Parser {
 	for _, a := range args {
 		switch arg := a.(type) {
-		case IsFlag:
+		case IFlag:
 			_ = p.AddFlag(arg)
-		case IsKeyValue:
+		case IKeyValue:
 			_ = p.AddKeyValue(arg)
-		case IsPositional:
+		case IPositional:
 			_ = p.AddPosition(arg)
-		case IsPipe:
+		case IPipe:
 			_ = p.AddPipe(arg)
 		default:
-			log.Warn("Skipping malformed Arg",
+			log.Warn("Unable to add malformed Arg",
 				zap.String("_t", fmt.Sprintf("%T", a)),
 				zap.String("name", a.Name()),
 				zap.Stringer("type", a.Type()))
@@ -144,38 +199,101 @@ func (p *Parser) Add(args ...Arg) *Parser {
 	return p
 }
 
+// State checks the 'state' of some Arg by its Identifier *after* Parse has been called (always returning nil before).
+func (p *Parser) State(id Identifier) error {
+	err, exists := p.argState[id.argName()]
+	if !exists || err == ok {
+		return nil
+	}
+
+	return err
+}
+
 // AddPosition adds a positional argument to the Parser.
-func (p *Parser) AddPosition(a IsPositional, opts ...Option) *Parser {
-	if err := p.Set.AddPosition(a, opts...); HandleError(p.eh, err) {
-		p.setErr = multierror.Append(p.setErr, err)
+func (p *Parser) AddPosition(a IPositional, opts ...Option) *Parser {
+	if err := p.Set.AddPosition(a, opts...); err != nil {
+		p.vErr = multierror.Append(p.vErr, fmt.Errorf("%w: unable to add positional argument", err))
 	}
 	return p
 }
 
 // AddFlag adds a flag argument to the Parser.
-func (p *Parser) AddFlag(f IsFlag, opts ...Option) *Parser {
-
-	if err := p.Set.AddFlag(f, opts...); HandleError(p.eh, err) {
-		p.setErr = multierror.Append(p.setErr, fmt.Errorf("unable to add flag: %w", err))
+func (p *Parser) AddFlag(f IFlag, opts ...Option) *Parser {
+	if err := p.Set.AddFlag(f, opts...); err != nil {
+		p.vErr = multierror.Append(p.vErr, fmt.Errorf("%w: unable to add flag", err))
 	}
 	return p
 }
 
 // AddKeyValue adds a key-value argument to the Parser.
-func (p *Parser) AddKeyValue(kv IsKeyValue, opts ...Option) *Parser {
-	if err := p.Set.AddKeyValue(kv, opts...); HandleError(p.eh, err) {
-		p.setErr = multierror.Append(p.setErr, fmt.Errorf("unable to add key-value: %w", err))
+func (p *Parser) AddKeyValue(kv IKeyValue, opts ...Option) *Parser {
+	if err := p.Set.AddKeyValue(kv, opts...); err != nil {
+		p.vErr = multierror.Append(p.vErr, fmt.Errorf("%w: unable to add key-value", err))
 
 	}
 	return p
 }
 
 // AddPipe adds a pipe argument to the Parser.
-func (p *Parser) AddPipe(pipe IsPipe, options ...Option) *Parser {
-	if err := p.Set.AddPipe(pipe, options...); HandleError(p.eh, err) {
-		p.setErr = multierror.Append(p.setErr, fmt.Errorf("unable to add position: %w", err))
+func (p *Parser) AddPipe(pipe IPipe, options ...Option) *Parser {
+	if err := p.Set.AddPipe(pipe, options...); err != nil {
+		p.vErr = multierror.Append(p.vErr, fmt.Errorf("%w: unable to add pipe", err))
+		return p
 	}
+	pipe.updateInput(p.Stdin)
 	return p
+}
+
+// Parse command-line input.
+//
+// Parse does not return an error, instead, during the run any errors that occur are collected and stored internally
+// to be retrieved via the Err method. If the ErrorHandling is not set to ContinueOnError, then errors during Parse
+// will cause the program to either panic of exit.
+func (p *Parser) Parse(argv []string) {
+
+	log.Debug("Parsing input",
+		zap.String("parser", p.Name),
+		zap.Int("handling", int(p.ErrorHandling)),
+		zap.Bool("strict", p.Strict),
+		zap.Int("shift", p.Shift),
+		zap.Strings("input", argv))
+
+	if argv == nil {
+		log.Debug("Using os.Args", zap.Strings("input", os.Args))
+		argv = os.Args[1+p.Shift:]
+	} else if len(argv) <= p.Shift {
+		p.pErr = fmt.Errorf("unable to parse, invalid number of arguments: got %d but want at least %d", len(argv), p.Shift)
+		return
+	}
+
+	p.argState = map[argName]error{}
+	parseErr := new(multierror.Error)
+	parseErr.ErrorFormat = func(es []error) string {
+		hdr := fmt.Sprintf("parser failure: %d error(s) occurred parsing %q:\n", len(es), strings.Join(argv, " "))
+
+		msgs := make([]string, len(es))
+
+		for i, e := range es {
+			msgs[i] = fmt.Sprintf("\t* %s", e)
+		}
+
+		return hdr + strings.Join(msgs, "\n")
+	}
+
+	p.pErr = parseErr
+
+	for tkns, consumed, err := argv[p.Shift:], []string{}, error(nil); err != finished; tkns, consumed, err = p.scan(tkns) {
+		if err != nil {
+			scanErr := ErrScanning(err, consumed...)
+			log.Warn("Error during token scan", zap.Error(scanErr))
+			p.pErr = multierror.Append(p.pErr, scanErr)
+		}
+		log.Debug("Scanned", zap.Strings("tkns", tkns), zap.Strings("consumed", consumed), zap.Error(err))
+	}
+
+	p.parse()
+
+	HandleError(p.Stderr, p.ErrorHandling, p.Err())
 }
 
 // Ok is a helper function that panics if there were any Parser errors. This is useful for running at the end of a chain
@@ -184,165 +302,158 @@ func (p *Parser) AddPipe(pipe IsPipe, options ...Option) *Parser {
 // Returns the Parser for convenience.
 func (p *Parser) Ok() *Parser {
 
-	if HandleError(p.eh, p.setErr.ErrorOrNil()) {
-		panic(p.setErr.ErrorOrNil())
+	parserErr := p.pErr
+	validationErr := p.vErr
+
+	if validationErr.Len() > 0 && !p.SuppressValidation {
+		parserErr = multierror.Append(parserErr, validationErr)
 	}
 
-	if HandleError(p.eh, p.Err()) {
-		panic(p.Err())
+	if HandleError(p.Stderr, p.ErrorHandling, parserErr) {
+		_, _ = fmt.Fprint(p.Stdout, parserErr)
+		if !p.SuppressUsage {
+			p.Usage()
+		}
+		os.Exit(1)
 	}
 
 	return p
 }
 
-// Err returns the error for the *latest* call to Parse.
-func (p *Parser) Err() error {
-	return p.parseErr.ErrorOrNil()
+// Valid returns validation error(s) that occurred trying to add arguments to the Parser.
+func (p *Parser) Valid() error {
+	if p.vErr == nil {
+		return nil
+	}
+
+	return p.vErr.ErrorOrNil()
 }
 
-// Parse command-line input.
-func (p *Parser) Parse(argv []string) {
-
-	if argv == nil {
-		argv = os.Args[1:]
+// Err returns the error(s) for the *latest* call to Parse.
+func (p *Parser) Err() error {
+	if p.pErr == nil {
+		return nil
 	}
 
-	log.Debug("Parsing input", zap.String("parser", p.name), zap.Int("handling", int(p.eh)), zap.Strings("input", argv))
-	p.parseErr = new(multierror.Error)
-	p.parseErr.ErrorFormat = func(es []error) string {
-		hdr := fmt.Sprintf("caught %d error(s) parsing input %q:\n\t", len(es), argv)
-
-		msgs := make([]string, len(es))
-
-		for i, e := range es {
-			msgs[i] = fmt.Sprintf("* %s", e)
+	switch err := p.pErr.(type) {
+	// make sure we don't return an empty non-nil multi error
+	case *multierror.Error:
+		if len(err.Errors) == 0 {
+			return nil
 		}
+		return err
+	default:
+		return err
+	}
+}
 
-		return hdr + strings.Join(msgs, "\n\t")
+const usageTemplate = `
+Usage: {{ .Name }} [ <args>, ... ] [ <key>=<value>, ... ] [ --<flag>=<value>, ... ]
+{{ if .Arguments }}
+ARGUMENTS
+{{- range .Arguments }}
+	{{ . -}}
+{{- end -}}
+{{- end }}
+
+{{ if .Keys -}}
+NAMED ARGUMENTS
+{{- range $name, $desc := .Keys }}
+	{{ printf "%-24s : %s" $name $desc }} 
+{{- end -}}
+{{- end }}
+
+{{ if .Flags -}} 
+FLAGS
+{{- range $name, $desc := .Flags }}
+	{{ printf "%-24s : %s" $name $desc }} 
+{{- end -}}
+{{- end -}}
+`
+
+type usageTemplateData struct {
+	Name      string
+	Arguments []string
+	Keys      map[string]string
+	Flags     map[string]string
+}
+
+// Usage writes the help-text/usage to the output.
+func (p *Parser) Usage() {
+
+	dat := usageTemplateData{
+		Name:      p.Name,
+		Arguments: []string{},
+		Keys:      map[string]string{},
+		Flags:     map[string]string{},
 	}
 
-	relativePos := 0
+	positionalArgs := make([]string, len(p.Positions()))
 
-	for tkns, consumed, err := argv, []string{}, error(nil); ; tkns, consumed, err = p.scan(tkns) {
+	for _, pa := range p.Positions() {
+		//dat.Arguments = append(dat.Arguments, )
+		k := fmt.Sprintf("%d", pa.Index())
 
-		relativePos += len(consumed)
-
-		if err == finished {
-			break
+		usage := pa.Usage()
+		if pa.IsRepeatable() {
+			k += " ..."
+			usage = fmt.Sprintf("(repeatable) %s", usage)
 		}
-		if HandleError(p.eh, err) {
-			scanErr := ErrScanning(relativePos, err, consumed...)
-			log.Warn("Error during token scan", zap.Error(scanErr))
-			p.parseErr = multierror.Append(p.parseErr, scanErr)
-		}
+
+		positionalArgs[pa.Index()-1] = fmt.Sprintf("%-6s: %s", k, usage)
 	}
 
-	if pipe := p.Pipe(); pipe != nil {
-		if err := pipe.updateValue(); HandleError(p.eh, err) {
-			p.parseErr = multierror.Append(p.parseErr, ErrParsing(Pipe(""), err))
-		}
-	}
+	dat.Arguments = positionalArgs
 
-	variadicIndex := -1
-	var variadicValues []string
-	for im1, v := range p.positionalValues {
-
-		pA := p.Pos(im1 + 1)
-
-		if pA == nil && variadicIndex > 0 {
-			variadicValues = append(variadicValues, v)
-			continue
-		} else if pA == nil {
-			break
-		}
-
-		if pA.IsRepeatable() {
-			variadicIndex = im1 + 1
-			variadicValues = append(variadicValues, v)
-		} else {
-			if err := pA.updateValue(v); HandleError(p.eh, err) {
-				p.parseErr = multierror.Append(p.parseErr, err)
-			}
-		}
-	}
-
-	if variadicIndex > 0 {
-		variadicPosArg := p.Pos(variadicIndex)
-		log.Debug("Updating variadic positional arguments", zap.Strings("vals", variadicValues))
-		if err := variadicPosArg.updateValue(variadicValues...); HandleError(p.eh, err) {
-			p.parseErr = multierror.Append(p.parseErr, err)
-		}
-	}
-
-	for name, vs := range p.keyValues {
-
-		kvA := p.Key(name)
-
-		if kvA == nil && p.Strict {
-			if HandleError(p.eh, ErrUnrecognisedToken) {
-				p.parseErr = multierror.Append(p.parseErr, ErrUnrecognisedToken)
-			}
-		} else if kvA == nil {
-			continue
-		}
-
-		if err := kvA.updateValue(vs...); HandleError(p.eh, err) {
-			p.parseErr = multierror.Append(p.parseErr, err)
-		}
-
-	}
-
-	for name, vs := range p.flagValues {
-
-		fA := p.Flag(name)
-
-		if fA == nil && p.Strict {
-			if HandleError(p.eh, ErrUnrecognisedToken) {
-				p.parseErr = multierror.Append(p.parseErr, ErrUnrecognisedToken)
-			}
-		} else if fA == nil {
-			continue
-		}
-
-		if err := fA.updateValue(vs...); HandleError(p.eh, err) {
-			p.parseErr = multierror.Append(p.parseErr, err)
-		}
-	}
-
-	missing := ErrMissing()
 	for _, a := range p.Args() {
 
-		// only want to parse the default value for the Arg if it's not a Pipe
-		if !a.IsParsed() && a.Type() != PipeType {
-			if err := a.updateValue(); HandleError(p.eh, err) {
-				p.parseErr = multierror.Append(p.parseErr, err)
-			}
-		}
+		switch a.(type) {
+		case IFlag:
 
-		if p.Strict {
-			if !a.IsParsed() {
-				missing.Add(a)
+			n := "--" + a.Name()
+			var sh string
+			if a.Shorthand() != noShorthand {
+				sh = fmt.Sprintf("[-%c]", a.Shorthand())
 			}
-		} else {
-			if !a.IsParsed() && a.IsRequired() {
-				missing.Add(a)
+			n = fmt.Sprintf("%-5s %s", sh, n)
+			dat.Flags[n] = a.Usage()
+
+		case IKeyValue:
+
+			n := a.Name()
+			var sh string
+			if a.Shorthand() != noShorthand {
+				sh = fmt.Sprintf("[%c]", a.Shorthand())
 			}
+			n = fmt.Sprintf("%-4s %s", sh, n)
+			dat.Keys[n] = a.Usage()
+
+		default:
+			continue
 		}
 	}
 
-	if len(missing.missing) > 0 && HandleError(p.eh, missing) {
-		p.parseErr = multierror.Append(p.parseErr, missing)
+	tpl := template.New("help")
+
+	if t, err := tpl.Parse(usageTemplate); err != nil {
+		panic(fmt.Errorf("unable to write help to output: %w", err))
+	} else if terr := t.Execute(p.Stdout, dat); err != nil {
+		panic(fmt.Errorf("error executing help template: (%s) %w", err, terr))
 	}
 }
 
 var (
 	finished = errors.New("scan finished")
+	ok       = errors.New("ok")
 )
 
-// Scan some input for argument tokens (i.e. a positional argument, a key-value argument value or a flag argument value).
+// scan some input for argument tokens (i.e. a positional argument, a key-value argument value or a flag argument value).
 //
-// Returns the tokens that were 'consumed' (successful or not), the remaining uns-canned tokens in the input and any errors
+// Returns the tokens that were 'consumed' (successful or not), the remaining un-scanned tokens in the input and any errors
 // associated with scanning the 'consumed' tokens
+//
+// NOTE: will *not* recursively call itself, it will scan a single token (1 or 2 elements) and return - it is on the
+// caller to make repeated calls to scan to consume the entire input, which is when scan will return finished.
 func (p *Parser) scan(input []string) (remaining, consumed []string, err error) {
 
 	if len(input) < 1 {
@@ -386,7 +497,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 
 			// key supplied with no value
 			if keyValue[1] == "" {
-				return left, consumed, ErrIncompleteToken
+				return left, consumed, ErrInvalid
 			}
 
 			// both argID and argValue can be detected
@@ -402,24 +513,21 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 	}
 
 	if !(Unrecognised < argType && argType <= limit) {
-		return left, consumed, ErrUnrecognisedType
+		return left, consumed, ErrUnknownType
 	}
 
 	defer func() {
 		// At this point, we know what each of the argType is, so we can explicitly handle the case here and not have
 		// to repeat it in the below block.
-		//
-		// We don't mind if we add argId and argValue that may be broken or result in errors - that will be thrown to
-		// the Parser.parseErr.
-		log.Debug("Processing scanned token",
+
+		log.Debug("Scanned tokens",
 			zap.String("arg_id", argID),
 			zap.String("arg_value", argValue),
-			zap.Stringer("arg_type", argType))
+			zap.Stringer("arg_type", argType),
+			zap.Error(err))
 
 		switch argType {
 		case PositionType:
-			// for Positional argMap, we only care about this specific position and so do not consume any extra values
-			// from the input
 			p.positionalValues = append(p.positionalValues, argValue)
 		case FlagType:
 			if argValueDetected {
@@ -439,8 +547,9 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 
 		return left, consumed, nil
 	case KeyValueType:
-		if !p.Has(Key(argID)) {
-			return left, consumed, WarnUnrecognisedArg
+
+		if p.Has(Key(argID)) && p.Strict {
+			return left, consumed, ErrUnidentified
 		} else {
 			return left, consumed, nil
 		}
@@ -456,31 +565,36 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 			if flagSingleDash {
 				// with a '-' prefix, argID can have 1 of 3 meanings:
 				//
-				//	1. full name of a flag
-				//	2. the shorthand name of a flag
+				//	1. full Name of a flag
+				//	2. the shorthand Name of a flag
 				//	3. the combination of the shorthands of multiple boolean flags
 				//
 				// We just need to check 3. as 1/2 will sort themselves out
 
-				var newInput []string
+				if argValueDetected {
 
-				for _, c := range argID {
+				} else {
+					var newInput []string
 
-					newInput = append(newInput, fmt.Sprintf("-%c", c))
-					if a, exists := p.shorthands[c]; !exists || a.Type() != FlagType {
-						return left, []string{this}, fmt.Errorf("%w by shorthand: %c", ErrUnrecognisedToken, c)
+					for _, c := range argID {
+
+						newInput = append(newInput, fmt.Sprintf("-%c", c))
+
+						if a, exists := p.shorthands[c]; (!exists || a.Type() != FlagType) && p.Strict {
+							return left, []string{this}, ErrUnidentified
+						}
 					}
-				}
 
-				for _, i := range left {
-					newInput = append(newInput, i)
-				}
+					for _, i := range left {
+						newInput = append(newInput, i)
+					}
 
-				return newInput, []string{this}, nil
+					return newInput, []string{this}, nil
+				}
 
 			} else {
-				// fA == nil => a flag with name argID does not exist
-				return left, []string{this}, WarnUnrecognisedArg
+				// fA == nil => a flag with Name argID does not exist
+				return left, []string{this}, ErrUnidentified
 			}
 		}
 
@@ -510,26 +624,185 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 				log.Debug("Setting BOOL flag value string", zap.Bool("value_string", !dflt))
 				argValue = fmt.Sprintf("%t", !dflt)
 				argValueDetected = true
-			case *FlagArg[Counter]:
-				// TODO: figure out why this just never gets hit :confused_potato:
+			case *FlagArg[parse.C]:
+				// TODO: figure out why this just never gets hit when C is in this package :confused_potato:
 				log.Debug("Handling COUNTER indicator")
 			}
 			argValueDetected = true
 			return left, consumed, nil
 		} else {
-			if len(left) < 1 {
-				return left, consumed, ErrIncompleteToken
+			// flag needs a value
+			if len(left) == 0 {
+				return left, consumed, ErrInvalid
 			}
 			argValue = left[0]
 			consumed = append(consumed, argValue)
-			left = left[1:]
 			argValueDetected = true
 
-			return left[1:], consumed, nil
+			// argValue might have been the last value
+			if len(left) > 1 {
+				return left[1:], consumed, nil
+			} else {
+				return nil, consumed, finished
+			}
+
 		}
 	}
 
-	return left, consumed, ErrIncompleteToken
+	return left, consumed, ErrInvalid
+}
+
+// parse the Arg(s) within the Parser.
+//
+// NOTE: assumes that input has already been scanned
+func (p *Parser) parse() {
+
+	if pipe := p.Pipe(); pipe != nil && pipe.IsSupplied() {
+		if err := pipe.updateValue(); err != nil {
+			p.updateState(pipe, err)
+
+			if p.Strict {
+				p.pErr = multierror.Append(p.pErr, ErrParsing(Pipe(""), err))
+			}
+		}
+	}
+
+	variadicIndex := -1
+	var variadicValues []string
+	for im1, v := range p.positionalValues {
+
+		pA := p.Pos(im1 + 1)
+
+		// we have reached the end of the positional arguments, or we are processing
+		// a variadic argument that started before this
+		if pA == nil && variadicIndex > 0 {
+			variadicValues = append(variadicValues, v)
+			continue
+		} else if pA == nil {
+			break
+		}
+
+		if pA.IsRepeatable() {
+			variadicIndex = im1 + 1
+			variadicValues = append(variadicValues, v)
+		} else {
+			if err := pA.updateValue(v); err != nil {
+				p.updateState(pA, err)
+
+				if pA.IsRequired() || p.Strict {
+					p.pErr = multierror.Append(p.pErr, err)
+				}
+			}
+		}
+	}
+
+	if variadicIndex > 0 {
+		variadicPosArg := p.Pos(variadicIndex)
+		log.Debug("Updating variadic positional arguments", zap.Strings("vals", variadicValues))
+		if err := variadicPosArg.updateValue(variadicValues...); err != nil {
+
+			p.updateState(variadicPosArg, err)
+
+			if variadicPosArg.IsRequired() || p.Strict {
+				p.pErr = multierror.Append(p.pErr, err)
+			}
+		}
+	}
+
+	for name, vs := range p.keyValues {
+
+		kvA := p.Key(name)
+
+		// no need to log an error since this would have been noticed during the scan
+		if kvA == nil {
+			log.Warn("No such key-value argument to parse", zap.String("name", name), zap.Strings("values", vs))
+			continue
+		}
+
+		if err := kvA.updateValue(vs...); err != nil {
+			// we always want to update the state to track every Arg that fails, but we only want to add an error if we
+			// are running in strict mode (which prohibits any parser failures) or if the arg is required
+
+			p.updateState(kvA, err)
+			if kvA.IsRequired() || p.Strict {
+				p.pErr = multierror.Append(p.pErr, err)
+			}
+		}
+	}
+
+	for name, vs := range p.flagValues {
+
+		fA := p.Flag(name)
+
+		// no need to log an error since this would have been noticed during the scan
+		if fA == nil {
+			log.Warn("No such flag argument to parse", zap.String("name", name), zap.Strings("values", vs))
+			continue
+		}
+
+		if err := fA.updateValue(vs...); err != nil {
+			p.updateState(fA, err)
+
+			if fA.IsRequired() || p.Strict {
+				p.pErr = multierror.Append(p.pErr, err)
+			}
+		}
+	}
+
+	for _, a := range p.Args() {
+
+		log.Debug("Checking Argument", zap.String("name", a.Name()), zap.Stringer("type", a.Type()))
+
+		if a.IsParsed() {
+			p.updateState(a, ok)
+			continue
+		}
+
+		// error parsing has already been reported
+		if err := p.State(a); err != nil {
+			continue
+		}
+
+		shouldAttemptDefaultParse := true
+
+		switch arg := a.(type) {
+		case IFlag:
+			if !arg.HasDefault() {
+				shouldAttemptDefaultParse = false
+			}
+		case IKeyValue:
+			if !arg.HasDefault() {
+				shouldAttemptDefaultParse = false
+			}
+		case IPipe:
+			shouldAttemptDefaultParse = false
+		}
+
+		if shouldAttemptDefaultParse {
+			if err := a.updateValue(); err != nil {
+				p.updateState(a, ErrMissing)
+
+				if p.Strict || a.IsRequired() {
+					p.pErr = multierror.Append(p.pErr, fmt.Errorf("error parsing default value: %w", err))
+				}
+			} else {
+				p.updateState(a, ok)
+			}
+			continue
+		}
+
+		// if strict-mode: add the error to the final pErr
+		// otherwise, we just need to update the state of the Arg
+		if p.Strict || a.IsRequired() {
+			p.pErr = multierror.Append(p.pErr, fmt.Errorf("%w: %s (%s)", ErrMissing, a.Name(), a.Type()))
+		}
+
+		p.updateState(a, ErrMissing)
+	}
+}
+
+func (p *Parser) updateState(a Arg, state error) {
+	p.argState[a.argName()] = state
 }
 
 // Complete attaches arguments and flags to the completion Command for autocompletion support.
@@ -563,6 +836,14 @@ func (p *Parser) Complete(cmd *complete.Command) {
 	}
 
 	for _, fl := range p.Flags() {
+		if fl.IsIndicator() {
+			cmd.Flags[fl.Name()] = predict.Nothing
+			continue
+		}
 		cmd.Flags[fl.Name()] = predict.Something
 	}
+}
+
+func (p *Parser) Using(elements ...any) *Parser {
+	return p
 }

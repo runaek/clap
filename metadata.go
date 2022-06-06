@@ -13,9 +13,7 @@ func NewMetadata(opts ...Option) *Metadata {
 	return md
 }
 
-// WithShorthand adds a shorthand/alias to some Arg.
-//
-// This is a no-op for IsPositional types.
+// WithShorthand adds a shorthand/alias to some Arg if applicable.
 func WithShorthand(sh rune) Option {
 	return shorthandOpt{Shorthand: sh}
 }
@@ -25,9 +23,7 @@ func WithUsage(usage string) Option {
 	return usageOpt{Usage: usage}
 }
 
-// WithDefault adds a default string value for some Arg.
-//
-// This is a no-op for IsPositional types.
+// WithDefault adds a default string value for some Arg, if applicable.
 func WithDefault(defaultValue string) Option {
 	return defaultOpt{Default: defaultValue}
 }
@@ -39,10 +35,17 @@ func AsRequired() Option {
 	}
 }
 
+// withDefaultDisabled is a private Option that is added to every Arg implementation which does not support defaults.
+//
+// Namely, PipeArg and PositionalArg.
 func withDefaultDisabled() Option {
 	return noDefaultOpt{}
 }
 
+// withNoShorthand is a private Option that is added to every Arg implementation which does not support shorthand
+// aliasing.
+//
+// Namely, PipeArg and PositionalArg
 func withNoShorthand() Option {
 	return noShorthandOpt{}
 }
@@ -59,7 +62,7 @@ func AsOptional() Option {
 // Metadata can only be updated through Option implementations.
 type Metadata struct {
 	argUsage     string // describes how to use the argument
-	argShorthand rune   // a single character that can identify the argument
+	argShorthand rune   // a single character that can argName the argument or noShorthand
 	argDefault   string // the default str to be used when the argument is not supplied
 	hasDefault   bool   // indicates argDefault has been set (to differentiate between "" and not supplied)
 	argRequired  bool   // indicates if the argument is mandatory
@@ -91,15 +94,18 @@ func (m *Metadata) HasDefault() bool {
 	return m.hasDefault
 }
 
-// An Option describes a change to some *Metadata, such as changing the Key/setting the argument as required.
+// An Option describes a change to some *Metadata.
 type Option interface {
+	// apply the change to the *Metadata
 	apply(*Metadata)
 }
 
 type noShorthandOpt struct{}
 
 var (
-	noShorthand rune = -255
+	// TODO: figure out if this is incredibly stupid or a safe hack
+	// TODO: change shorthand to a string and validate it is only 1 character?
+	noShorthand rune = 255
 )
 
 func (_ noShorthandOpt) apply(metadata *Metadata) {

@@ -2,14 +2,13 @@ package clap
 
 import (
 	"fmt"
+	"github.com/runaek/clap/pkg/parse"
 	"go.uber.org/zap"
 	"strings"
 )
 
-// IsPositional represents an Arg of Type: PositionType.
-//
-// See PositionalArg.
-type IsPositional interface {
+// IPositional is the interface satisfied by a PositionalArg.
+type IPositional interface {
 	Arg
 
 	// Index returns the index (position) of the PositionalArg (or the starting index of the remaining args if
@@ -19,20 +18,28 @@ type IsPositional interface {
 	mustEmbedPosition()
 }
 
-func NewPosition[T any](variable *T, index int, parser ValueParser[T], opts ...Option) *PositionalArg[T] {
+func NewPosition[T any](variable *T, index int, parser parse.Parser[T], opts ...Option) *PositionalArg[T] {
+	return PositionUsingVariable[T](index, NewVariable[T](variable, parser), opts...)
+}
+
+func NewPositions[T any](variables *[]T, fromIndex int, parser parse.Parser[T], opts ...Option) *PositionalArg[[]T] {
+	return PositionsUsingVariable[T](fromIndex, NewVariable[[]T](variables, parse.SliceParser[T](parser)), opts...)
+}
+
+func PositionUsingVariable[T any](index int, v Variable[T], opts ...Option) *PositionalArg[T] {
 	opts = append(opts, positionOptions...)
 	return &PositionalArg[T]{
 		md:       NewMetadata(opts...),
-		v:        NewVariable[T](variable, parser),
+		v:        v,
 		argIndex: index,
 	}
 }
 
-func NewPositions[T any](variables *[]T, fromIndex int, parser ValueParser[T], opts ...Option) *PositionalArg[[]T] {
+func PositionsUsingVariable[T any](fromIndex int, v Variable[[]T], opts ...Option) *PositionalArg[[]T] {
 	opts = append(opts, positionOptions...)
 	return &PositionalArg[[]T]{
 		md:            NewMetadata(opts...),
-		v:             NewVariable[[]T](variables, SliceParser[T](parser)),
+		v:             v,
 		argStartIndex: fromIndex,
 	}
 }
@@ -40,7 +47,7 @@ func NewPositions[T any](variables *[]T, fromIndex int, parser ValueParser[T], o
 // Position is an Identifier for some PositionalArg.
 type Position int
 
-func (i Position) identify() argName {
+func (i Position) argName() argName {
 	return PositionType.getIdentifier(fmt.Sprintf("%d", i))
 }
 
@@ -56,12 +63,12 @@ type PositionalArg[T any] struct {
 	v  Variable[T]
 
 	argIndex      int // > 0 indicates a single position
-	argStartIndex int // > 0 indicates a variableParser number of positions (the final N args)
+	argStartIndex int // > 0 indicates a variable number of positions (the final N args)
 
 	parsed, supplied bool
 }
 
-func (p PositionalArg[T]) identify() argName {
+func (p PositionalArg[T]) argName() argName {
 	return PositionType.getIdentifier(p.Name())
 }
 
@@ -85,7 +92,7 @@ func (p *PositionalArg[T]) Usage() string {
 }
 
 func (p *PositionalArg[T]) Shorthand() rune {
-	return 0
+	return noShorthand
 }
 
 func (p *PositionalArg[T]) ValueType() string {
@@ -99,6 +106,9 @@ func (p *PositionalArg[T]) IsRepeatable() bool {
 }
 
 func (p *PositionalArg[T]) IsRequired() bool {
+	if p.argStartIndex > 0 {
+		return false
+	}
 	return p.md.IsRequired()
 }
 
@@ -140,7 +150,7 @@ func (p *PositionalArg[T]) updateValue(inputs ...string) (err error) {
 		zap.String("pos_index", p.Name()),
 		zap.String("pos_type", p.ValueType()),
 		zap.Strings("input", inputs),
-		zap.String("parser_type", fmt.Sprintf("%T", v.parser())),
+		zap.String("parser_type", fmt.Sprintf("%T", v.Parser())),
 		zap.Bool("parsed", p.parsed))
 
 	if p.parsed {
@@ -149,12 +159,13 @@ func (p *PositionalArg[T]) updateValue(inputs ...string) (err error) {
 
 	defer func() {
 
+		if len(inputs) > 0 {
+			p.supplied = true
+		}
+
 		if err == nil {
 			p.parsed = true
 
-			if len(inputs) > 0 {
-				p.supplied = true
-			}
 		} else {
 			log.Debug("Error updating Positional argument value",
 				zap.String("pos_index", p.Name()),
@@ -173,7 +184,8 @@ func (p *PositionalArg[T]) updateValue(inputs ...string) (err error) {
 func (_ *PositionalArg[T]) mustEmbedPosition() {}
 
 var (
-	_ Identifier    = Position(0)
-	_ TypedArg[any] = &PositionalArg[any]{}
-	_ IsPositional  = &PositionalArg[any]{}
+	_ Identifier         = Position(0)
+	_ TypedArg[any]      = &PositionalArg[any]{}
+	_ TypedArg[[]string] = &PositionalArg[[]string]{}
+	_ IPositional        = &PositionalArg[any]{}
 )

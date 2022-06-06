@@ -1,34 +1,64 @@
 package clap
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
 
-func ErrScanning(at int, cause error, tokens ...string) *ScanError {
+const (
+	ErrUnidentified Error = "unidentified argument"
+	ErrMissing      Error = "argument is missing"
+	ErrDuplicate    Error = "identifier already exists"
+	ErrInvalidIndex Error = "invalid positional index"
+	ErrPipeExists   Error = "pipe already exists"
+	ErrUnknownType  Error = "unrecognised argument type"
+	ErrInvalid      Error = "invalid argument syntax"
+)
+
+// Error is a simple indicator for some error that occurs.
+//
+// The value of the error should indicate the 'cause' of the problem and context should be provided by the returning
+// process.
+type Error string
+
+func (err Error) Error() string {
+	return string(err)
+}
+
+func (err Error) Is(target error) bool {
+
+	parseErr, ok := target.(Error)
+
+	if !ok {
+		return false
+	}
+
+	return parseErr == err
+}
+
+// ErrScanning is a constructor for a ScanError.
+func ErrScanning(cause error, tokens ...string) *ScanError {
 	return &ScanError{
-		Index:  at,
 		Tokens: tokens,
 		Cause:  cause,
 	}
 }
 
-// ScanError indicates that there was an error decoding the command-line input tokens.
+// ScanError indicates that there was an error scanning the command-line inpu.
 type ScanError struct {
-	Index  int
-	Tokens []string
-	Cause  error
+	Tokens []string // Tokens are the offending tokens
+	Cause  error    // Cause is the error that the tokens lead to
 }
 
 func (err *ScanError) Error() string {
-	return fmt.Sprintf("error scanning %q (index=%d): %s", err.Tokens, err.Index, err.Cause)
+	return fmt.Sprintf("error scanning %q: %s", strings.Join(err.Tokens, " "), err.Cause)
 }
 
 func (err *ScanError) Unwrap() error {
 	return err.Cause
 }
 
+// ErrParsing is a constructor for a ParseError.
 func ErrParsing(id Identifier, cause error) *ParseError {
 	return &ParseError{
 		Id:    id,
@@ -47,64 +77,6 @@ func (err *ParseError) Unwrap() error {
 }
 
 func (err *ParseError) Error() string {
-	a := err.Id.identify()
-	return fmt.Sprintf("error parsing %s argument %q: %s", a.Type(), a.Name(), err.Cause)
-}
-
-var (
-	ErrUnrecognisedType  = errors.New("unable to determine argument type")
-	ErrUnrecognisedToken = errors.New("unrecognised token")
-	ErrIncompleteToken   = errors.New("argument is missing its value")
-	WarnUnrecognisedArg  = errors.New("unrecognised argument name")
-)
-
-// ErrMissing is a constructor for an *empty* MissingInputError.
-//
-// ErrMissing *always* returns a non-nil *MissingInputError - it is on the caller to add errors to this  and make it
-// meaningful (i.e. it will still be considered an error if there are no ids 'missing' - use IsEmpty to check)
-func ErrMissing(ids ...Identifier) *MissingInputError {
-	err := &MissingInputError{
-		missing: map[argName]struct{}{},
-	}
-
-	err.Add(ids...)
-
-	return err
-}
-
-// MissingInputError indicates that there are missing argument(s).
-type MissingInputError struct {
-	missing map[argName]struct{}
-}
-
-func (err *MissingInputError) IsEmpty() bool {
-	return len(err.missing) == 0
-}
-
-func (err *MissingInputError) Add(ids ...Identifier) {
-	if err.missing == nil {
-		err.missing = map[argName]struct{}{}
-	}
-
-	for _, id := range ids {
-		err.missing[id.identify()] = struct{}{}
-	}
-}
-
-func (err *MissingInputError) Error() string {
-	hdr := fmt.Sprintf("%d missing argument(s):", len(err.missing))
-
-	msgs := make([]string, len(err.missing))
-	i := 0
-	for a, _ := range err.missing {
-		msgs[i] = fmt.Sprintf("\t> (%s) %s", a.Type(), a.Name())
-		i++
-	}
-
-	return fmt.Sprintf("%s\n%s", hdr, strings.Join(msgs, "\n"))
-}
-
-func (err *MissingInputError) IsMissing(id Identifier) bool {
-	_, missing := err.missing[id.identify()]
-	return missing
+	a := err.Id.argName()
+	return fmt.Sprintf("error parsing (%s) %q): %s", a.Type(), a.Name(), err.Cause)
 }

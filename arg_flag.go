@@ -2,24 +2,22 @@ package clap
 
 import (
 	"fmt"
-	"github.com/runaek/clap/pkg/parsers"
+	"github.com/runaek/clap/pkg/parse"
 	"go.uber.org/zap"
 	"strings"
 )
 
-// IsFlag represents an Arg of Type: FlagType.
-//
-// See FlagArg.
-type IsFlag interface {
+// IFlag is the interface satisfied by a FlagArg.
+type IFlag interface {
 	Arg
 
-	// IsIndicator returns true if the FlagArg does not require a value (e.g. a bool or Counter)
+	// IsIndicator returns true if the FlagArg does not require a value (e.g. a bool or C)
 	IsIndicator() bool
 
 	// HasDefault returns true if the flag has a defined default string value
 	HasDefault() bool
 
-	isFlag()
+	isFlagArg()
 }
 
 // Help is a constructor for some *FlagArg[bool] (identified by '--help'/'-h') type.
@@ -29,46 +27,64 @@ func Help(helpRequested *bool, desc string) *FlagArg[bool] {
 		desc = "Display the help-text for a command or program."
 	}
 
-	fl := NewFlagP[bool](helpRequested, "help", 'h', parsers.Bool, WithUsage(desc), WithDefault("false"))
+	fl := NewFlagP[bool](helpRequested, "help", 'h', parse.Bool{}, WithUsage(desc), WithDefault("false"))
 	return fl
 }
 
 // NewFlag is a constructor for a new *FlagArg[T].
-func NewFlag[T any](val *T, name string, parser ValueParser[T], opts ...Option) *FlagArg[T] {
-	return &FlagArg[T]{
-		Key: name,
-		md:  NewMetadata(opts...),
-		v:   NewVariable(val, parser),
-	}
+func NewFlag[T any](val *T, name string, parser parse.Parser[T], opts ...Option) *FlagArg[T] {
+	return FlagUsingVariable[T](name, NewVariable[T](val, parser), opts...)
 }
 
 // NewFlags is a constructor for a repeatable *FlagArg[[]T].
-func NewFlags[T any](val *[]T, name string, parser ValueParser[T], options ...Option) *FlagArg[[]T] {
-	f := NewFlag[[]T](val, name, SliceParser(parser), options...)
-	f.repeatable = true
-	return f
+func NewFlags[T any](val *[]T, name string, parser parse.Parser[T], options ...Option) *FlagArg[[]T] {
+	return FlagsUsingVariable[T](name, NewVariables[T](val, parser), options...)
+
 }
 
 // NewFlagsP is a constructor for a repeatable *FlagArg[[]T] with a shorthand.
-func NewFlagsP[T any](val *[]T, name string, shorthand rune, parser ValueParser[T], options ...Option) *FlagArg[[]T] {
-	f := NewFlagP[[]T](val, name, shorthand, SliceParser(parser), options...)
+func NewFlagsP[T any](val *[]T, name string, shorthand rune, parser parse.Parser[T], options ...Option) *FlagArg[[]T] {
+	f := NewFlagP[[]T](val, name, shorthand, parse.SliceParser[T](parser), options...)
 	f.repeatable = true
 	return f
 }
 
 // NewFlagP is a constructor for some new *FlagArg[T] with a shorthand.
-func NewFlagP[T any](val *T, name string, shorthand rune, parser ValueParser[T], opts ...Option) *FlagArg[T] {
+func NewFlagP[T any](val *T, name string, shorthand rune, parser parse.Parser[T], opts ...Option) *FlagArg[T] {
 	opts = append(opts, WithShorthand(shorthand))
 	f := NewFlag[T](val, name, parser, opts...)
+	return f
+}
+
+// FlagUsingVariable is a constructor for a FlagArg using a Name and some Variable.
+func FlagUsingVariable[T any](name string, v Variable[T], opts ...Option) *FlagArg[T] {
+	f := &FlagArg[T]{
+		Key: name,
+		md:  NewMetadata(opts...),
+		v:   v,
+	}
 
 	var zero T
 
 	switch interface{}(zero).(type) {
-	// Counter is a special type which is repeatable, its value will be the number of times
+	// C is a special type which is repeatable, its value will be the number of times
 	// it was supplied
-	case Counter:
+	case parse.C:
 		f.repeatable = true
 	}
+
+	return f
+}
+
+// FlagsUsingVariable is a constructor for a repeatable FlagArg using a Name and some Variable.
+func FlagsUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *FlagArg[[]T] {
+	f := &FlagArg[[]T]{
+		Key: name,
+		md:  NewMetadata(opts...),
+		v:   v,
+	}
+
+	f.repeatable = true
 
 	return f
 }
@@ -76,7 +92,7 @@ func NewFlagP[T any](val *T, name string, shorthand rune, parser ValueParser[T],
 // Flag is an Identifier for some FlagArg.
 type Flag string
 
-func (f Flag) identify() argName {
+func (f Flag) argName() argName {
 	return FlagType.getIdentifier(string(f))
 }
 
@@ -89,7 +105,7 @@ type FlagArg[T any] struct {
 	repeatable, supplied, parsed bool
 }
 
-func (f *FlagArg[T]) identify() argName {
+func (f *FlagArg[T]) argName() argName {
 	return FlagType.getIdentifier(f.Name())
 }
 
@@ -143,7 +159,7 @@ func (f *FlagArg[T]) IsIndicator() bool {
 	var zero T
 
 	switch interface{}(zero).(type) {
-	case *bool, bool, []bool, []*bool, Counter:
+	case *bool, bool, []bool, []*bool, parse.C:
 		return true
 	default:
 		return false
@@ -161,7 +177,7 @@ func (f *FlagArg[T]) updateValue(s ...string) (err error) {
 	log.Debug("Updating FlagArg argument value",
 		zap.String("flag_name", f.Name()),
 		zap.String("flag_type", f.ValueType()),
-		zap.String("parser_type", fmt.Sprintf("%T", v.parser())),
+		zap.String("parser_type", fmt.Sprintf("%T", v.Parser())),
 		zap.Strings("input", s),
 		zap.Bool("parsed", f.parsed))
 
@@ -212,10 +228,10 @@ func (f *FlagArg[T]) updateMetadata(opts ...Option) {
 	f.md.updateMetadata(opts...)
 }
 
-func (f *FlagArg[T]) isFlag() {}
+func (f *FlagArg[T]) isFlagArg() {}
 
 var (
 	_ Identifier    = Flag("")
-	_ IsFlag        = &FlagArg[any]{}
+	_ IFlag         = &FlagArg[any]{}
 	_ TypedArg[any] = &FlagArg[any]{}
 )

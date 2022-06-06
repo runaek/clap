@@ -2,52 +2,70 @@ package clap
 
 import (
 	"fmt"
+	"github.com/runaek/clap/pkg/parse"
 	"go.uber.org/zap"
 	"strings"
 )
 
-// IsKeyValue represents an Arg of Type: KeyValueType.
-//
-// See KeyValueArg.
-type IsKeyValue interface {
+// IKeyValue is the interface satisfied by a KeyValueArg.
+type IKeyValue interface {
 	Arg
 
 	// HasDefault returns true if the Arg has a defined default string value
 	HasDefault() bool
 
-	mustEmbedKey()
+	isKeyValueArg()
 }
 
 // NewKeyValue is a constructor for a key-value argument from the command-line.
-func NewKeyValue[T any](variable *T, name string, p ValueParser[T], opts ...Option) *KeyValueArg[T] {
-	return &KeyValueArg[T]{
-		Key: name,
-		md:  NewMetadata(opts...),
-		v:   NewVariable[T](variable, p),
-	}
+func NewKeyValue[T any](variable *T, name string, p parse.Parser[T], opts ...Option) *KeyValueArg[T] {
+	v := NewVariable[T](variable, p)
+	return KeyValueUsingVariable[T](name, v, opts...)
 }
 
 // NewKeyValues is a constructor for a repeatable key-valued arguments from the command-line.
-func NewKeyValues[T any](variables *[]T, name string, p ValueParser[T], opts ...Option) *KeyValueArg[[]T] {
-	return &KeyValueArg[[]T]{
+//
+// Automatically converts the FuncTypeParser[T] into a FuncTypeParser[[]T] via SliceParser - use KeyValuesUsingVariable
+// to be able to change this behaviour as required.
+func NewKeyValues[T any](variables *[]T, name string, p parse.Parser[T], opts ...Option) *KeyValueArg[[]T] {
+	v := NewVariables[T](variables, p)
+	return KeyValuesUsingVariable(name, v, opts...)
+}
+
+// KeyValueUsingVariable allows a KeyValueArg to be constructed using a Variable.
+func KeyValueUsingVariable[T any](name string, v Variable[T], opts ...Option) *KeyValueArg[T] {
+	kv := &KeyValueArg[T]{
+		Key: name,
+		md:  NewMetadata(opts...),
+		v:   v,
+	}
+
+	return kv
+}
+
+// KeyValuesUsingVariable allows a repeatable KeyValueArg to be constructed using Variable.
+func KeyValuesUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *KeyValueArg[[]T] {
+	kv := &KeyValueArg[[]T]{
 		Key:        name,
 		md:         NewMetadata(opts...),
-		v:          NewVariables[T](variables, p),
+		v:          v,
 		repeatable: true,
 	}
+
+	return kv
 }
 
 // A Key is an Identifier for some KeyValueArg.
 type Key string
 
-func (k Key) identify() argName {
+func (k Key) argName() argName {
 	return KeyValueType.getIdentifier(string(k))
 }
 
 // A KeyValueArg represents a key=value argument where the key is a string and the value is a string representation for
 // some type T.
 //
-// Should be created by the NewKeyValue and NewKeyValues functions.
+// Should be created by the functions: NewKeyValue, NewKeyValues, KeyValueUsingVariable and KeyValuesUsingVariable.
 type KeyValueArg[T any] struct {
 	Key string
 	md  *Metadata
@@ -56,7 +74,7 @@ type KeyValueArg[T any] struct {
 	repeatable, supplied, parsed bool
 }
 
-func (k *KeyValueArg[T]) identify() argName {
+func (k *KeyValueArg[T]) argName() argName {
 	return KeyValueType.getIdentifier(k.Name())
 }
 
@@ -124,7 +142,7 @@ func (k *KeyValueArg[T]) updateValue(s ...string) (err error) {
 	log.Debug("Updating Key Value argument value",
 		zap.String("kv_name", k.Name()),
 		zap.String("kv_type", k.ValueType()),
-		zap.String("parser_type", fmt.Sprintf("%T", v.parser())),
+		zap.String("parser_type", fmt.Sprintf("%T", v.Parser())),
 		zap.Strings("input", s),
 		zap.Bool("parsed", k.parsed))
 
@@ -159,10 +177,10 @@ func (k *KeyValueArg[T]) updateValue(s ...string) (err error) {
 	return v.Update(input...)
 }
 
-func (_ *KeyValueArg[T]) mustEmbedKey() {}
+func (_ *KeyValueArg[T]) isKeyValueArg() {}
 
 var (
 	_ Identifier    = Key("")
 	_ TypedArg[any] = &KeyValueArg[any]{}
-	_ IsKeyValue    = &KeyValueArg[any]{}
+	_ IKeyValue     = &KeyValueArg[any]{}
 )

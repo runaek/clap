@@ -1,15 +1,8 @@
 package clap
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
-)
-
-var (
-	ErrDuplicateID  = errors.New("identifier already exists")
-	ErrPipeExists   = errors.New("pipe already exists")
-	ErrInvalidIndex = errors.New("invalid positional index")
 )
 
 // NewSet is a constructor for a new empty *Set.
@@ -17,21 +10,21 @@ func NewSet() *Set {
 	return &Set{
 		shorthands: map[rune]argName{},
 		k2n:        map[argName]string{},
-		keys:       argMap[IsKeyValue]{},
-		flags:      argMap[IsFlag]{},
-		positions:  argMap[IsPositional]{},
+		keys:       argMap[IKeyValue]{},
+		flags:      argMap[IFlag]{},
+		positions:  argMap[IPositional]{},
 		posArgs:    map[int]string{},
 	}
 }
 
 // A Set is a container for a command-line Arg(s) of any Type.
 type Set struct {
-	shorthands map[rune]argName     // shorthands for KeyValueArg/FlagArgs, map: shorthand -> argName
-	k2n        map[argName]string   // ids for all args, map: id -> Arg.Name
-	keys       argMap[IsKeyValue]   // key-value args,	map: id -> KeyValueArg
-	flags      argMap[IsFlag]       // flag args,        map: id -> FlagArg
-	positions  argMap[IsPositional] // positional args,  map: id -> PositionalArg
-	pipe       IsPipe               // the PipeArg (each Set can only have 1 PipeArg)
+	shorthands map[rune]argName    // shorthands for KeyValueArg/FlagArgs, map: shorthand -> argName
+	k2n        map[argName]string  // ids for all args, map: id -> Arg.Name
+	keys       argMap[IKeyValue]   // key-value args,	map: id -> KeyValueArg
+	flags      argMap[IFlag]       // flag args,        map: id -> FlagArg
+	positions  argMap[IPositional] // positional args,  map: id -> PositionalArg
+	pipe       IPipe               // the PipeArg (each Set can only have 1 PipeArg)
 	posArgs    map[int]string
 }
 
@@ -76,7 +69,7 @@ func (s *Set) Args() []Arg {
 
 // Has returns true if there is an Arg with the given Identifier in the Set.
 func (s *Set) Has(id Identifier) bool {
-	_, exists := s.k2n[id.identify()]
+	_, exists := s.k2n[id.argName()]
 	return exists
 }
 
@@ -85,7 +78,7 @@ func (s *Set) Get(id Identifier) Arg {
 	if !s.Has(id) {
 		return nil
 	}
-	an := id.identify()
+	an := id.argName()
 	name := an.Name()
 	switch an.Type() {
 	case FlagType:
@@ -120,8 +113,8 @@ func (s *Set) ByShorthand(shorthand rune) Arg {
 	return s.Get(id)
 }
 
-// Flag returns the flag for the given name/identifier, if it exists, otherwise nil.
-func (s *Set) Flag(name string) IsFlag {
+// Flag returns the flag for the given Name/identifier, if it exists, otherwise nil.
+func (s *Set) Flag(name string) IFlag {
 
 	if f, exists := s.flags[name]; exists {
 		return f
@@ -129,7 +122,7 @@ func (s *Set) Flag(name string) IsFlag {
 
 	if len(name) == 1 {
 		a := s.ByShorthand(rune(name[0]))
-		if fl, ok := a.(IsFlag); ok {
+		if fl, ok := a.(IFlag); ok {
 			return fl
 		}
 	}
@@ -138,17 +131,19 @@ func (s *Set) Flag(name string) IsFlag {
 }
 
 // Flags returns all flags(s) within the argMap.
-func (s *Set) Flags() []IsFlag {
+func (s *Set) Flags() []IFlag {
 	return s.flags.List()
 }
 
 // AddFlag adds a flag argument to the Parser.
-func (s *Set) AddFlag(f IsFlag, opts ...Option) error {
+//
+// Returns ErrDuplicate if the key or alias already exists in the Set.
+func (s *Set) AddFlag(f IFlag, opts ...Option) error {
 
 	f.updateMetadata(opts...)
 
 	if s.Has(f) {
-		return ErrDuplicateID
+		return ErrDuplicate
 	}
 
 	name := f.Name()
@@ -156,7 +151,7 @@ func (s *Set) AddFlag(f IsFlag, opts ...Option) error {
 
 	if sh := f.Shorthand(); sh != noShorthand {
 		if an, exists := s.shorthands[sh]; exists {
-			return fmt.Errorf("shorthand %w for %q", ErrDuplicateID, an.Name())
+			return fmt.Errorf("%w: shorthand already in use by %q", ErrDuplicate, an.Name())
 		}
 		s.shorthands[sh] = k
 		s.k2n[FlagType.getIdentifier(fmt.Sprintf("%c", sh))] = name
@@ -168,8 +163,8 @@ func (s *Set) AddFlag(f IsFlag, opts ...Option) error {
 	return nil
 }
 
-// Key returns the key-value argument for the given name/identifier, if it exists, otherwise nil.
-func (s *Set) Key(name string) IsKeyValue {
+// Key returns the key-value argument for the given Name/identifier, if it exists, otherwise nil.
+func (s *Set) Key(name string) IKeyValue {
 
 	if f, exists := s.keys[name]; exists {
 		return f
@@ -177,7 +172,7 @@ func (s *Set) Key(name string) IsKeyValue {
 
 	if len(name) == 1 {
 		a := s.ByShorthand(rune(name[0]))
-		if kv, ok := a.(IsKeyValue); ok {
+		if kv, ok := a.(IKeyValue); ok {
 			return kv
 		}
 	}
@@ -185,17 +180,19 @@ func (s *Set) Key(name string) IsKeyValue {
 }
 
 // KeyValues returns all key-value arguments within the Set.
-func (s *Set) KeyValues() []IsKeyValue {
+func (s *Set) KeyValues() []IKeyValue {
 	return s.keys.List()
 }
 
 // AddKeyValue adds a key-value argument to the Set.
-func (s *Set) AddKeyValue(kv IsKeyValue, opts ...Option) error {
+//
+// Returns ErrDuplicate if the key or alias already exists in the Set.
+func (s *Set) AddKeyValue(kv IKeyValue, opts ...Option) error {
 
 	kv.updateMetadata(opts...)
 
 	if s.Has(kv) {
-		return ErrDuplicateID
+		return ErrDuplicate
 	}
 
 	name := kv.Name()
@@ -204,7 +201,7 @@ func (s *Set) AddKeyValue(kv IsKeyValue, opts ...Option) error {
 	if sh := kv.Shorthand(); sh != noShorthand {
 
 		if existingArgKey, shorthandExists := s.shorthands[sh]; shorthandExists {
-			return fmt.Errorf("shorthand %w for %q", ErrDuplicateID, existingArgKey.Name())
+			return fmt.Errorf("%w: shorthand already in use by %q", ErrDuplicate, existingArgKey.Name())
 		}
 		s.k2n[KeyValueType.getIdentifier(fmt.Sprintf("%c", sh))] = name
 		s.shorthands[sh] = k
@@ -217,7 +214,7 @@ func (s *Set) AddKeyValue(kv IsKeyValue, opts ...Option) error {
 }
 
 // Pos returns the positional argument at the supplied index, if it exists, otherwise nil.
-func (s *Set) Pos(index int) IsPositional {
+func (s *Set) Pos(index int) IPositional {
 	k, exists := s.posArgs[index]
 
 	if !exists {
@@ -228,27 +225,35 @@ func (s *Set) Pos(index int) IsPositional {
 }
 
 // PosS is a wrapper around Pos which accepts a string representation of the integer position.
-func (s *Set) PosS(sindex string) IsPositional {
+func (s *Set) PosS(sindex string) IPositional {
 	i, _ := strconv.ParseInt(sindex, 10, 64)
 
 	return s.Pos(int(i))
 }
 
 // Positions returns all positional arguments within the Set.
-func (s *Set) Positions() []IsPositional {
+func (s *Set) Positions() []IPositional {
 	return s.positions.List()
 }
 
 // AddPosition adds a positional argument to the Set.
 //
-// The Set expects positional arguments to be supplied in order.
-func (s *Set) AddPosition(a IsPositional, opts ...Option) error {
+// The Set expects positional arguments to be supplied in order and returns a wrapped ErrInvalidIndex if arguments
+// are specified in an invalid order.
+func (s *Set) AddPosition(a IPositional, opts ...Option) error {
 
 	index := a.Index()
 	expectedIndex := len(s.positions) + 1
 
 	if s.Has(Position(a.Index())) {
-		return ErrDuplicateID
+		return ErrDuplicate
+	}
+
+	lastArg := s.Pos(len(s.positions))
+
+	if lastArg != nil && !lastArg.IsRequired() && a.IsRequired() {
+		return fmt.Errorf("%w: position %d cannot be required because position %d is optional",
+			ErrInvalidIndex, index, len(s.positions))
 	}
 
 	a.updateMetadata(opts...)
@@ -277,12 +282,14 @@ func (s *Set) AddPosition(a IsPositional, opts ...Option) error {
 }
 
 // Pipe returns the pipe argument for the Set, if it exists, otherwise nil.
-func (s *Set) Pipe() IsPipe {
+func (s *Set) Pipe() IPipe {
 	return s.pipe
 }
 
 // AddPipe adds a pipe argument to the Set.
-func (s *Set) AddPipe(p IsPipe, opts ...Option) error {
+//
+// Returns ErrPipeExists if a pipe already exists in the Set.
+func (s *Set) AddPipe(p IPipe, opts ...Option) error {
 	if s.pipe == nil {
 		p.updateMetadata(opts...)
 		s.pipe = p
@@ -292,7 +299,7 @@ func (s *Set) AddPipe(p IsPipe, opts ...Option) error {
 	return nil
 }
 
-// argMap is a collection of Arg implementations (of the same Type), indexed by their name
+// argMap is a collection of Arg implementations (of the same Type), indexed by their Name
 type argMap[A Arg] map[string]A
 
 // List returns all the Arg(s) within the collection.
@@ -308,30 +315,7 @@ func (s argMap[A]) List() []A {
 	return out
 }
 
-// Get returns an Arg with the given name, if it exists within the collection.
+// Get returns an Arg with the given Name, if it exists within the collection.
 func (s argMap[A]) Get(name string) A {
 	return s[name]
 }
-
-//// A Collection of Arg(s) indexed by their respective Identifier.
-////
-//// TODO: finish this and wrap Set in this interface to make for easier testing
-//type Collection interface {
-//	// Args return all the Arg(s) within the Collection
-//	Args() []Arg
-//
-//	// Has returns true if the Identifier can be found in the Collection, otherwise false
-//	Has(Identifier) bool
-//
-//	// Get returns an Arg by its Identifier if it can be found in the Collection, otherwise nil
-//	Get(Identifier) Arg
-//
-//	// Flag returns a flag argument by its name/shorthand if it exists, otherwise nil
-//	Flag(string) IsFlag
-//
-//	// Flags returns all flags(s) within the argMap.
-//	Flags() []IsFlag
-//
-//	// Key returns a key-value argument by its key/shorthand if it exists, otherwise nil
-//	Key(string) IsKeyValue
-//}

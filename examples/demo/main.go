@@ -3,44 +3,49 @@ package main
 import (
 	"fmt"
 	"github.com/runaek/clap"
-	"github.com/runaek/clap/pkg/parsers"
+	"github.com/runaek/clap/pkg/parse"
 	"os"
 )
 
 var (
 	name    string
-	nameArg = clap.NewKeyValue[string](&name, "name", parsers.String,
+	nameArg = clap.NewKeyValue[string](&name, "name", parse.String{},
 		clap.WithDefault("Obi-Wan Kenobi"),
 		clap.WithShorthand('n'),
 		clap.WithUsage("Enter your name!"))
 
 	debug     bool
-	debugFlag = clap.NewFlagP[bool](&debug, "debug", 'V', parsers.Bool,
+	debugFlag = clap.NewFlagP[bool](&debug, "debug", 'V', parse.Bool{},
 		clap.WithUsage("Toggle DEBUG mode."),
 		clap.WithDefault("false"),
 	)
 
 	dev     bool
-	devFlag = clap.NewFlagP[bool](&dev, "dev", 'd', parsers.Bool,
+	devFlag = clap.NewFlagP[bool](&dev, "dev", 'd', parse.Bool{},
 		clap.WithUsage("Toggle DEV mode."),
-		clap.WithDefault("true"),
+		clap.WithDefault("false"),
 	)
 
-	counter     clap.Counter
-	counterFlag = clap.NewFlagP[clap.Counter](&counter, "counter", 'c', clap.CounterParser,
+	ident  string
+	idFlag = clap.NewFlag[string](&ident, "id", parse.String{},
+		clap.WithUsage("Choose an id."),
+		clap.AsRequired())
+
+	counter     parse.C
+	counterFlag = clap.NewFlagP[parse.C](&counter, "counter", 'c', parse.Counter{},
 		clap.WithUsage("Increment the counter."))
 
 	funcName    string
-	funcNamePos = clap.NewPosition[string](&funcName, 1, parsers.String,
+	funcNamePos = clap.NewPosition[string](&funcName, 1, parse.String{},
 		clap.WithUsage("Enter the name of a function to call."),
 		clap.WithDefault("greet"))
 
 	args    []string
-	argsPos = clap.NewPositions(&args, 2, parsers.String,
+	argsPos = clap.NewPositions[string](&args, 2, parse.String{},
 		clap.WithUsage("Enter the arguments for the function."))
 
 	csvArgs []string
-	csvPipe = clap.CSVPipe(&csvArgs, parsers.Strings)
+	csvPipe = clap.CSVPipe[[]string](&csvArgs, parse.Strings{})
 )
 
 func main() {
@@ -49,6 +54,7 @@ func main() {
 		AddFlag(debugFlag).
 		AddFlag(counterFlag).
 		AddFlag(devFlag).
+		AddFlag(idFlag, clap.AsOptional()).
 		AddPosition(funcNamePos).
 		AddPosition(argsPos).
 		AddKeyValue(nameArg).
@@ -56,14 +62,20 @@ func main() {
 		Ok()
 
 	parser.Parse(os.Args)
+	//parser.Ok()
 	fmt.Printf("name:    %s\n", name)
 	fmt.Printf("Debug:   %t\n", debug)
 	fmt.Printf("Dev:     %t\n", dev)
 	fmt.Printf("Func:    %s\n", funcName)
 	fmt.Printf("Args:    %s\n", args)
-	fmt.Printf("Counter: %d\n", counter)
+	fmt.Printf("CSVArgs: %s\n", csvArgs)
+	fmt.Printf("C: %d\n", counter)
+	fmt.Printf("Id:      %s\n", ident)
+
+	fmt.Println(parser.Err())
 
 	fmt.Println(parser.RawPositions())
 	fmt.Println(parser.RawFlags())
 	fmt.Println(parser.RawKeyValues())
+
 }
