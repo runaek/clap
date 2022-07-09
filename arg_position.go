@@ -173,7 +173,6 @@ func (p *PositionalArg[T]) updateValue(inputs ...string) (err error) {
 				zap.Error(err))
 		}
 	}()
-
 	if p.IsRepeatable() {
 		return v.Update(inputs...)
 	} else {

@@ -62,6 +62,10 @@ func (tc *ParserTestSuite) ThenTheStateForIdentifierShouldBe(id Identifier, stat
 	return tc
 }
 
+func (tc *ParserTestSuite) ThenTheParserShould(p *Parser) *ParserTestSuite {
+
+}
+
 func (tc *ParserTestSuite) Then(assrt func(assertions *assert.Assertions)) *ParserTestSuite {
 	tc.assertions = append(tc.assertions, assrt)
 	return tc
@@ -113,7 +117,7 @@ func (tc ParserTestSuite) Execute(t *testing.T) {
 func TestParser_Parse(t *testing.T) {
 
 	var testCases = map[string]ParserTestSuite{
-		"unnamed": NewParserTestSuite(func(suite *ParserTestSuite) {
+		"Basic": NewParserTestSuite(func(suite *ParserTestSuite) {
 
 			var (
 				n1        = NewPosition[string](nil, 1, parse.String{})
@@ -139,12 +143,36 @@ func TestParser_Parse(t *testing.T) {
 					a.Equal("hello", k2.Variable().Unwrap())
 					a.Equal("world", k1.Variable().Unwrap())
 				})
+		}),
+		"SubsequentCallsAreSame": NewParserTestSuite(func(suite *ParserTestSuite) {
+			var (
+				n1        = NewPosition[string](nil, 1, parse.String{})
+				n2        = NewPosition[int](nil, 2, parse.Int{})
+				remainder = NewPositions[string](nil, 3, parse.String{})
+				k1        = NewKeyValue[string](nil, "key1", parse.String{})
+				k2        = NewKeyValue[string](nil, "key2", parse.String{})
+			)
 
+			suite.
+				GivenArgAddedToParser(n1, n2, remainder, k1, k2).
+				WhenParsedWithInput("cmd", "1234", "arg3", "key2=hello", "key1=world", "arg4").
+				WhenParsedWithInput("cmd", "1234", "arg3", "key2=hello", "key1=world", "arg4").
+				ThenTheStateForIdentifierShouldBe(n1, nil).
+				ThenTheStateForIdentifierShouldBe(n2, nil).
+				ThenTheStateForIdentifierShouldBe(remainder, nil).
+				ThenTheStateForIdentifierShouldBe(k1, nil).
+				ThenTheStateForIdentifierShouldBe(k2, nil).
+				Then(func(a *assert.Assertions) {
+					a.Equal("cmd", n1.Variable().Unwrap())
+					a.Equal(1234, n2.Variable().Unwrap())
+					a.Equal([]string{"arg3", "arg4"}, remainder.Variable().Unwrap())
+					a.Equal("hello", k2.Variable().Unwrap())
+					a.Equal("world", k1.Variable().Unwrap())
+				})
 		}),
 	}
 
 	for name, tc := range testCases {
-
 		t.Run(name, tc.Execute)
 	}
 }

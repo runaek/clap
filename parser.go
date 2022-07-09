@@ -267,7 +267,8 @@ func (p *Parser) Parse(argv []string) {
 	}
 
 	p.argState = map[argName]error{}
-	p.posArgs = map[int]string{}
+	//p.posArgs = map[int]string{}
+	//p.positionalValues = nil
 	parseErr := new(multierror.Error)
 	parseErr.ErrorFormat = func(es []error) string {
 		hdr := fmt.Sprintf("parser failure: %d error(s) occurred parsing %q:\n", len(es), strings.Join(argv, " "))
