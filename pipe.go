@@ -3,6 +3,7 @@ package clap
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/runaek/clap/pkg/parse"
 	"go.uber.org/zap"
 	"io"
@@ -218,18 +219,25 @@ func (p *PipeArg[T]) updateValue(_ ...string) error {
 		if f == nil {
 			return errors.New("pipe has no input")
 		}
-		b, err := ioutil.ReadAll(f)
+		fi, err := f.Stat()
 
 		if err != nil {
-			return errors.New("error reading from pipe")
+			return fmt.Errorf("unable to stat pipe: %w", err)
 		}
-		fullData = b
+
+		fullData = make([]byte, fi.Size())
+
+		if _, err := f.Read(fullData); err != nil {
+			if err != io.EOF {
+				return fmt.Errorf("unable to read pipe: %w", err)
+			}
+		}
 		p.data = fullData
 	}
 
 	dat := bytes.NewReader(fullData)
 
-	inputs, err := p.piper.Pipe(dat)
+	inputs, err := p.PipeDecode(dat)
 
 	if err != nil {
 		return err

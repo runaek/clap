@@ -62,22 +62,13 @@ func TestPipeArg_Constructors(t *testing.T) {
 func TestParser_Pipe(t *testing.T) {
 
 	a := assert.New(t)
-	p := NewParser("test-parser", ContinueOnError)
+	p := NewParser("test-pipe-parser", ContinueOnError)
 
-	in, out, err := os.Pipe()
-
-	a.NoError(err, "error setting up Pipe")
-
-	fi, err := in.Stat()
-
-	a.NoError(err, "error getting Pipe information")
-
-	t.Logf("File Mode: %s", fi.Mode())
+	in, out, pipeErr := os.Pipe()
+	a.NoError(pipeErr, "error setting up Pipe")
 
 	_, writeErr := out.WriteString("value,uno")
-
 	a.NoError(writeErr)
-	a.NoError(out.Close())
 
 	p.Stdin = in
 
@@ -98,6 +89,6 @@ func TestParser_Pipe(t *testing.T) {
 	a.Equal(true, f2.Variable().Unwrap())
 	a.Equal([]string{"value", "uno"}, p1.Variable().Unwrap())
 
-	a.NoError(in.Close())
+	a.NoError(out.Close())
 
 }
