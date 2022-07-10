@@ -287,6 +287,11 @@ func TestParser_Usage(t *testing.T) {
 	outF, outputErr := os.OpenFile(filepath.Join(tmpDir, "usage_output"), os.O_CREATE|os.O_RDWR, os.ModePerm)
 	a.NoError(outputErr)
 
+	defer func() {
+		inF.Close()
+		outF.Close()
+	}()
+
 	p.Stderr = outF
 	p.Stdout = outF
 	p.Stdin = inF
