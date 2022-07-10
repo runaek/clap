@@ -26,6 +26,7 @@ func SliceParser[T any](p Parser[T]) Parser[[]T] {
 				out[i] = v
 			}
 		}
+
 		return out, nil
 	})
 }

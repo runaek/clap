@@ -1,6 +1,7 @@
 package clap
 
 import (
+	"errors"
 	"fmt"
 	"github.com/runaek/clap/pkg/parse"
 	"strings"
@@ -25,7 +26,7 @@ import (
 //		myArg = NewKeyValue[string](&strVal, "arg1", parse.String, <options>...) // e.g. arg1=Test123 => strVal=Test123
 //		numFlag = NewFlag[int](&numVal, "amount", parse.Int, <options>...)       // e.g. --amount=123 => numVal=123
 //
-//		parser = clap.New("program-Name").
+//		parser = clap.New("program-Id").
 //				Add(myArg, numFlag).
 //				OK()
 //	)
@@ -44,8 +45,6 @@ type Arg interface {
 	Updater
 
 	// Name returns the key/identifier of the Arg, this should be unique for each Type.
-	//
-	// This is usually used to argName the Arg from the command-line
 	Name() string
 
 	// Type indicates the type of command-line argument the Arg is, returns one of:
@@ -62,7 +61,7 @@ type Arg interface {
 	// Shorthand is the single character alias/identifier for the Arg, if applicable
 	//
 	// Can be updated via the WithShorthand Option
-	Shorthand() rune
+	Shorthand() string
 
 	// Usage returns a usage of the Arg for the user
 	//
@@ -94,7 +93,7 @@ func Generalize[T any](typed ...TypedArg[T]) []Arg {
 	out := make([]Arg, len(typed))
 
 	for i, t := range typed {
-		out[i] = t.(Arg)
+		out[i] = t.(Arg) //nolint:forcetypeassert
 	}
 	return out
 }
@@ -114,7 +113,7 @@ type Identifier interface {
 	argName() argName
 }
 
-// NameOf is a helper function for getting the Name of an Arg from an Identifier.
+// NameOf is a helper function for getting the name of an Arg from an Identifier.
 func NameOf(id Identifier) string {
 	return id.argName().Name()
 }
@@ -124,14 +123,35 @@ func TypeOf(id Identifier) Type {
 	return id.argName().Type()
 }
 
+const (
+	ErrInvalidType Error = "invalid type"
+)
+
+// ValueOf is a helper function for retrieving the value of an Arg.
 func ValueOf[T any](arg Arg) (T, error) {
 	var zero T
-	return zero, nil
+
+	if typed, ok := arg.(TypedArg[T]); ok {
+		return typed.Variable().Unwrap(), nil
+	}
+
+	return zero, fmt.Errorf("%w: unable to read %T value from %T", ErrInvalidType, zero, arg)
 }
 
+// ReferenceTo is a helper function for retrieving a reference to the value for an Arg.
 func ReferenceTo[T any](arg Arg) (*T, error) {
 
-	return nil, nil
+	if arg == nil {
+		return nil, errors.New("nil reference")
+	}
+
+	if typ, ok := arg.(TypedArg[T]); ok {
+		return typ.Variable().Ref(), nil
+	}
+
+	var zero T
+
+	return nil, fmt.Errorf("%w: unable to reference variable of type %T from %T", ErrInvalidType, zero, arg)
 }
 
 // Updater is the shared private behaviour shared by all Arg which allows mutable *Metadata fields to be updated
@@ -154,9 +174,9 @@ func UpdateMetadata(u Updater, options ...Option) {
 	u.updateMetadata(options...)
 }
 
-// argName is the private key used to index/Name an Arg.
+// argName is the private key used to index/Id an Arg.
 //
-// This is a string formatted: <Type>:<Name>
+// This is a string formatted: <Type>:<Id>
 type argName string
 
 func (id argName) Type() Type {

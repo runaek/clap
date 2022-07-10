@@ -2,9 +2,7 @@ package clap
 
 // NewMetadata is a constructor for a new Metadata.
 func NewMetadata(opts ...Option) *Metadata {
-	md := &Metadata{
-		argShorthand: noShorthand,
-	}
+	md := &Metadata{}
 
 	for _, opt := range opts {
 		opt.apply(md)
@@ -14,7 +12,7 @@ func NewMetadata(opts ...Option) *Metadata {
 }
 
 // WithShorthand adds a shorthand/alias to some Arg if applicable.
-func WithShorthand(sh rune) Option {
+func WithShorthand(sh string) Option {
 	return shorthandOpt{Shorthand: sh}
 }
 
@@ -42,14 +40,6 @@ func withDefaultDisabled() Option {
 	return noDefaultOpt{}
 }
 
-// withNoShorthand is a private Option that is added to every Arg implementation which does not support shorthand
-// aliasing.
-//
-// Namely, PipeArg and PositionalArg
-func withNoShorthand() Option {
-	return noShorthandOpt{}
-}
-
 // AsOptional makes an Arg optional.
 func AsOptional() Option {
 	return &requiredOpt{
@@ -62,7 +52,7 @@ func AsOptional() Option {
 // Metadata can only be updated through Option implementations.
 type Metadata struct {
 	argUsage     string // describes how to use the argument
-	argShorthand rune   // a single character that can argName the argument or noShorthand
+	argShorthand string // a single character that can argName the argument or noShorthand
 	argDefault   string // the default str to be used when the argument is not supplied
 	hasDefault   bool   // indicates argDefault has been set (to differentiate between "" and not supplied)
 	argRequired  bool   // indicates if the argument is mandatory
@@ -82,7 +72,7 @@ func (m *Metadata) IsRequired() bool {
 	return m.argRequired
 }
 
-func (m *Metadata) Shorthand() rune {
+func (m *Metadata) Shorthand() string {
 	return m.argShorthand
 }
 
@@ -98,18 +88,6 @@ func (m *Metadata) HasDefault() bool {
 type Option interface {
 	// apply the change to the *Metadata
 	apply(*Metadata)
-}
-
-type noShorthandOpt struct{}
-
-var (
-	// TODO: figure out if this is incredibly stupid or a safe hack
-	// TODO: change shorthand to a string and validate it is only 1 character?
-	noShorthand rune = 255
-)
-
-func (_ noShorthandOpt) apply(metadata *Metadata) {
-	metadata.argShorthand = noShorthand
 }
 
 type noDefaultOpt struct{}
@@ -128,7 +106,7 @@ func (n usageOpt) apply(metadata *Metadata) {
 }
 
 type shorthandOpt struct {
-	Shorthand rune
+	Shorthand string
 }
 
 func (n shorthandOpt) apply(metadata *Metadata) {

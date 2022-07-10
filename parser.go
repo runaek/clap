@@ -108,7 +108,7 @@ func NewParser(n string, errHandling ErrorHandling) *Parser {
 	}
 
 	return &Parser{
-		Name:          n,
+		Id:            n,
 		Set:           NewSet(),
 		ErrorHandling: errHandling,
 		Stdout:        os.Stdout,
@@ -128,24 +128,31 @@ func NewParser(n string, errHandling ErrorHandling) *Parser {
 // By default, a Parser will read from os.Stdin and write to os.Stdout and os.Stderr - these fields can be changed as
 // required to any FileReader or FileWriter.
 type Parser struct {
-	// Name for the Parser
+	// Id for the Parser
+	Id string
+
+	// Name of the program
 	Name string
+	// Description of the program
+	Description string
 
 	// ErrorHandling mode to be used by the Parser
 	ErrorHandling ErrorHandling
 
 	// underlying Set for the Parser - holding all the Arg types the Parser is responsible for
 	*Set
+
 	// Shift shifts the Parser along, ignoring the first 'shifted' arguments
 	Shift int
+
 	// Strict defines whether unrecognised tokens (e.g. flag/keys) are ignored, or return ErrUnidentified
 	Strict bool
 
 	// SuppressUsage stops the Usage from being written out when an error occurs
 	SuppressUsage bool
 
-	// SuppressValidationErr stops validation errors (i.e. adding arguments to the Parser) from breaking
-	// the program.
+	// SuppressValidation stops validation errors (i.e. adding arguments to the Parser) from breaking
+	// the program
 	SuppressValidation bool
 
 	Stdin  FileReader
@@ -252,7 +259,7 @@ func (p *Parser) AddPipe(pipe IPipe, options ...Option) *Parser {
 func (p *Parser) Parse(argv []string) {
 
 	log.Debug("Parsing input",
-		zap.String("parser", p.Name),
+		zap.String("parser", p.Id),
 		zap.Int("handling", int(p.ErrorHandling)),
 		zap.Bool("strict", p.Strict),
 		zap.Int("shift", p.Shift),
@@ -267,8 +274,8 @@ func (p *Parser) Parse(argv []string) {
 	}
 
 	p.argState = map[argName]error{}
-	//p.posArgs = map[int]string{}
-	//p.positionalValues = nil
+	p.positionalValues = nil
+
 	parseErr := new(multierror.Error)
 	parseErr.ErrorFormat = func(es []error) string {
 		hdr := fmt.Sprintf("parser failure: %d error(s) occurred parsing %q:\n", len(es), strings.Join(argv, " "))
@@ -285,6 +292,21 @@ func (p *Parser) Parse(argv []string) {
 	p.pErr = parseErr
 
 	for tkns, consumed, err := argv[p.Shift:], []string{}, error(nil); err != finished; tkns, consumed, err = p.scan(tkns) {
+
+		if err == nil {
+			continue
+		}
+
+		if errors.Is(err, ErrUnidentified) && p.Strict {
+			scanErr := ErrScanning(err, consumed...)
+			log.Warn("Error during token scan", zap.Error(scanErr))
+			p.pErr = multierror.Append(p.pErr, scanErr)
+			continue
+		} else if errors.Is(err, ErrUnidentified) {
+			log.Warn("Unidentified argument error suppressed", zap.Error(err))
+			continue
+		}
+
 		if err != nil {
 			scanErr := ErrScanning(err, consumed...)
 			log.Warn("Error during token scan", zap.Error(scanErr))
@@ -349,46 +371,72 @@ func (p *Parser) Err() error {
 	}
 }
 
-const usageTemplate = `
-Usage: {{ .Name }} [ <args>, ... ] [ <key>=<value>, ... ] [ --<flag>=<value>, ... ]
-{{ if .Arguments }}
+const usageTemplate = `Usage: {{ .Name }} [ <args>, ... ] [ <key>=<value>, ... ] [ --<flag>=<value>, ... ]
+
+{{- if .Description }}
+
+{{ .Description }} 
+{{- end -}}
+
+{{- if .Pipe }}
+
+PIPE: {{ .Pipe }}
+{{- end }}
+
+{{- if .Arguments }}
+
 ARGUMENTS
 {{- range .Arguments }}
 	{{ . -}}
 {{- end -}}
 {{- end }}
 
-{{ if .Keys -}}
-NAMED ARGUMENTS
+{{- if .Keys }}
+
+OPTIONS (<key>=<value>)
 {{- range $name, $desc := .Keys }}
 	{{ printf "%-24s : %s" $name $desc }} 
 {{- end -}}
 {{- end }}
 
-{{ if .Flags -}} 
+{{- if .Flags }}
+
 FLAGS
 {{- range $name, $desc := .Flags }}
 	{{ printf "%-24s : %s" $name $desc }} 
 {{- end -}}
-{{- end -}}
+{{- end }}
 `
 
 type usageTemplateData struct {
-	Name      string
-	Arguments []string
-	Keys      map[string]string
-	Flags     map[string]string
+	Name        string
+	Description string
+	Arguments   []string
+	Keys        map[string]string
+	Flags       map[string]string
+	Pipe        string
 }
 
 // Usage writes the help-text/usage to the output.
 func (p *Parser) Usage() {
 
 	dat := usageTemplateData{
-		Name:      p.Name,
 		Arguments: []string{},
 		Keys:      map[string]string{},
 		Flags:     map[string]string{},
 	}
+
+	if p.Name == "" {
+		dat.Name = p.Id
+	} else {
+		dat.Name = p.Name
+	}
+
+	if pA := p.Pipe(); pA != nil {
+		dat.Pipe = pA.Usage()
+	}
+
+	dat.Description = p.Description
 
 	positionalArgs := make([]string, len(p.Positions()))
 
@@ -414,8 +462,8 @@ func (p *Parser) Usage() {
 
 			n := "--" + a.Name()
 			var sh string
-			if a.Shorthand() != noShorthand {
-				sh = fmt.Sprintf("[-%c]", a.Shorthand())
+			if a.Shorthand() != "" {
+				sh = fmt.Sprintf("[-%s]", a.Shorthand())
 			}
 			n = fmt.Sprintf("%-5s %s", sh, n)
 			dat.Flags[n] = a.Usage()
@@ -424,8 +472,8 @@ func (p *Parser) Usage() {
 
 			n := a.Name()
 			var sh string
-			if a.Shorthand() != noShorthand {
-				sh = fmt.Sprintf("[%c]", a.Shorthand())
+			if a.Shorthand() != "" {
+				sh = fmt.Sprintf("[%s]", a.Shorthand())
 			}
 			n = fmt.Sprintf("%-4s %s", sh, n)
 			dat.Keys[n] = a.Usage()
@@ -463,8 +511,9 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 	}
 
 	// split the input into the next token, and the remaining tokens
-	this, left := input[0], input[1:]
+	token, left := input[0], input[1:]
 
+	this := token
 	// every time scan is called, we will *at least* consume this token
 	consumed = []string{this}
 
@@ -550,10 +599,10 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		return left, consumed, nil
 	case KeyValueType:
 
-		if p.Has(Key(argID)) && p.Strict {
-			return left, consumed, ErrUnidentified
-		} else {
+		if p.Has(Key(argID)) {
 			return left, consumed, nil
+		} else {
+			return left, consumed, fmt.Errorf("%w: no such Key", ErrUnidentified)
 		}
 	case FlagType:
 		// for FlagArg argMap we need to check if we are dealing with a BOOL flag - if we are, then we don't need to
@@ -563,45 +612,44 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		fA := p.Flag(argID)
 
 		if fA == nil {
-
 			if flagSingleDash {
-				// with a '-' prefix, argID can have 1 of 3 meanings:
-				//
-				//	1. full Name of a flag
-				//	2. the shorthand Name of a flag
-				//	3. the combination of the shorthands of multiple boolean flags
-				//
-				// We just need to check 3. as 1/2 will sort themselves out
 
-				if argValueDetected {
+				if len(argID) == 1 {
+					if an, exists := p.shorthands[argID]; exists && an.Type() == FlagType {
+						return left, consumed, nil
+					} else {
+						return left, []string{token}, fmt.Errorf("%w: no such Flag", ErrUnidentified)
+					}
 
-				} else {
+					// if argValueDetected => not combined boolean flags
+				} else if !argValueDetected {
 					var newInput []string
 
 					for _, c := range argID {
 
 						newInput = append(newInput, fmt.Sprintf("-%c", c))
 
-						if a, exists := p.shorthands[c]; (!exists || a.Type() != FlagType) && p.Strict {
-							return left, []string{this}, ErrUnidentified
+						if a, exists := p.shorthands[string(c)]; !exists || a.Type() != FlagType {
+							return left, []string{token}, fmt.Errorf("%w: no such Flag", ErrUnidentified)
 						}
 					}
 
-					for _, i := range left {
-						newInput = append(newInput, i)
-					}
+					newInput = append(newInput, left...)
 
+					argValueDetected = true
 					return newInput, []string{this}, nil
+				} else {
+					return left, []string{token}, fmt.Errorf("%w: no such Flag", ErrUnidentified)
 				}
 
 			} else {
-				// fA == nil => a flag with Name argID does not exist
-				return left, []string{this}, ErrUnidentified
+				// fA == nil => a flag with Id argID does not exist
+				return left, []string{token}, fmt.Errorf("%w: no such Flag", ErrUnidentified)
 			}
 		}
 
 		// flag was supplied like -k=<value> or --key=<value> => no more input to be consumed
-		if argValueDetected {
+		if argValueDetected || fA == nil {
 			break
 		}
 
@@ -645,13 +693,12 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 			if len(left) > 1 {
 				return left[1:], consumed, nil
 			} else {
-				return nil, consumed, finished
+				return left, consumed, finished
 			}
-
 		}
 	}
 
-	return left, consumed, ErrInvalid
+	return left, consumed, nil
 }
 
 // parse the Arg(s) within the Parser.
@@ -679,6 +726,7 @@ func (p *Parser) parse() {
 		// a variadic argument that started before this
 		if pA == nil && variadicIndex > 0 {
 			variadicValues = append(variadicValues, v)
+
 			continue
 		} else if pA == nil {
 			break
@@ -724,7 +772,6 @@ func (p *Parser) parse() {
 		if err := kvA.updateValue(vs...); err != nil {
 			// we always want to update the state to track every Arg that fails, but we only want to add an error if we
 			// are running in strict mode (which prohibits any parser failures) or if the arg is required
-
 			p.updateState(kvA, err)
 			if kvA.IsRequired() || p.Strict {
 				p.pErr = multierror.Append(p.pErr, err)
@@ -739,6 +786,7 @@ func (p *Parser) parse() {
 		// no need to log an error since this would have been noticed during the scan
 		if fA == nil {
 			log.Warn("No such flag argument to parse", zap.String("name", name), zap.Strings("values", vs))
+
 			continue
 		}
 
@@ -765,6 +813,10 @@ func (p *Parser) parse() {
 			continue
 		}
 
+		if !a.IsRequired() {
+			continue
+		}
+
 		shouldAttemptDefaultParse := true
 
 		switch arg := a.(type) {
@@ -776,7 +828,8 @@ func (p *Parser) parse() {
 			if !arg.HasDefault() {
 				shouldAttemptDefaultParse = false
 			}
-		case IPipe:
+		case IPipe, IPositional:
+			// default positional/pipe values do not make sense
 			shouldAttemptDefaultParse = false
 		}
 

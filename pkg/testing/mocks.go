@@ -214,7 +214,7 @@ func (mr *MockFileInfoMockRecorder) Mode() *gomock.Call {
 // Name mocks base method.
 func (m *MockFileInfo) Name() string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Name")
+	ret := m.ctrl.Call(m, "Id")
 	ret0, _ := ret[0].(string)
 	return ret0
 }
@@ -222,7 +222,7 @@ func (m *MockFileInfo) Name() string {
 // Name indicates an expected call of Name.
 func (mr *MockFileInfoMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockFileInfo)(nil).Name))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Id", reflect.TypeOf((*MockFileInfo)(nil).Name))
 }
 
 // Size mocks base method.

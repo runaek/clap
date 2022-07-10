@@ -4,35 +4,34 @@ import (
 	"fmt"
 	"github.com/runaek/clap"
 	"github.com/runaek/clap/pkg/parse"
-	"os"
 )
 
 var (
 	name    string
 	nameArg = clap.NewKeyValue[string](&name, "name", parse.String{},
 		clap.WithDefault("Obi-Wan Kenobi"),
-		clap.WithShorthand('n'),
+		clap.WithShorthand("n"),
 		clap.WithUsage("Enter your name!"))
 
 	debug     bool
-	debugFlag = clap.NewFlagP[bool](&debug, "debug", 'V', parse.Bool{},
+	debugFlag = clap.NewFlagP[bool](&debug, "debug", "V", parse.Bool{},
 		clap.WithUsage("Toggle DEBUG mode."),
 		clap.WithDefault("false"),
 	)
 
 	dev     bool
-	devFlag = clap.NewFlagP[bool](&dev, "dev", 'd', parse.Bool{},
+	devFlag = clap.NewFlag[bool](&dev, "dev", parse.Bool{},
 		clap.WithUsage("Toggle DEV mode."),
 		clap.WithDefault("false"),
 	)
 
 	ident  string
-	idFlag = clap.NewFlag[string](&ident, "id", parse.String{},
+	idFlag = clap.NewFlagP[string](&ident, "id", "I", parse.String{},
 		clap.WithUsage("Choose an id."),
 		clap.AsRequired())
 
 	counter     parse.C
-	counterFlag = clap.NewFlagP[parse.C](&counter, "counter", 'c', parse.Counter{},
+	counterFlag = clap.NewFlagP[parse.C](&counter, "counter", "c", parse.Counter{},
 		clap.WithUsage("Increment the counter."))
 
 	funcName    string
@@ -45,37 +44,30 @@ var (
 		clap.WithUsage("Enter the arguments for the function."))
 
 	csvArgs []string
-	csvPipe = clap.CSVPipe[[]string](&csvArgs, parse.Strings{})
+	csvPipe = clap.CSVPipe[[]string](&csvArgs, parse.Strings{},
+		clap.WithUsage("Comma-separated data from a pipe."))
 )
 
 func main() {
+	clap.SetName("demo")
+	clap.SetDescription("This is a demonstration program.")
 
-	parser := clap.Must("demo", clap.ContinueOnError).
-		AddFlag(debugFlag).
-		AddFlag(counterFlag).
-		AddFlag(devFlag).
-		AddFlag(idFlag, clap.AsOptional()).
-		AddPosition(funcNamePos).
-		AddPosition(argsPos).
-		AddKeyValue(nameArg).
-		AddPipe(csvPipe).
-		Ok()
+	if err := clap.Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe); err != nil {
+		panic(err)
+	}
 
-	parser.Parse(os.Args)
-	//parser.Ok()
-	fmt.Printf("name:    %s\n", name)
+	if err := clap.Parse(); err != nil {
+		fmt.Printf("Parser Error: %s\n", err)
+	}
+
+	fmt.Printf("Name:    %s\n", name)
 	fmt.Printf("Debug:   %t\n", debug)
 	fmt.Printf("Dev:     %t\n", dev)
 	fmt.Printf("Func:    %s\n", funcName)
 	fmt.Printf("Args:    %s\n", args)
 	fmt.Printf("CSVArgs: %s\n", csvArgs)
-	fmt.Printf("C: %d\n", counter)
+	fmt.Printf("Counter: %d\n", counter)
 	fmt.Printf("Id:      %s\n", ident)
 
-	fmt.Println(parser.Err())
-
-	fmt.Println(parser.RawPositions())
-	fmt.Println(parser.RawFlags())
-	fmt.Println(parser.RawKeyValues())
-
+	clap.Ok()
 }

@@ -8,7 +8,7 @@ import (
 // NewSet is a constructor for a new empty *Set.
 func NewSet() *Set {
 	return &Set{
-		shorthands: map[rune]argName{},
+		shorthands: map[string]argName{},
 		k2n:        map[argName]string{},
 		keys:       argMap[IKeyValue]{},
 		flags:      argMap[IFlag]{},
@@ -19,7 +19,7 @@ func NewSet() *Set {
 
 // A Set is a container for a command-line Arg(s) of any Type.
 type Set struct {
-	shorthands map[rune]argName    // shorthands for KeyValueArg/FlagArgs, map: shorthand -> argName
+	shorthands map[string]argName  // shorthands for KeyValueArg/FlagArgs, map: shorthand -> argName
 	k2n        map[argName]string  // ids for all args, map: id -> Arg.Name
 	keys       argMap[IKeyValue]   // key-value args,	map: id -> KeyValueArg
 	flags      argMap[IFlag]       // flag args,        map: id -> FlagArg
@@ -94,13 +94,13 @@ func (s *Set) Get(id Identifier) Arg {
 }
 
 // ByShorthand returns the Arg for the given shorthand identifier, if it exists, otherwise nil.
-func (s *Set) ByShorthand(shorthand rune) Arg {
+func (s *Set) ByShorthand(sh string) Arg {
 
-	if shorthand == noShorthand {
+	if sh == "" {
 		return nil
 	}
 
-	id, exists := s.shorthands[shorthand]
+	id, exists := s.shorthands[sh]
 
 	if !exists {
 		return nil
@@ -113,7 +113,7 @@ func (s *Set) ByShorthand(shorthand rune) Arg {
 	return s.Get(id)
 }
 
-// Flag returns the flag for the given Name/identifier, if it exists, otherwise nil.
+// Flag returns the flag for the given Id/identifier, if it exists, otherwise nil.
 func (s *Set) Flag(name string) IFlag {
 
 	if f, exists := s.flags[name]; exists {
@@ -121,7 +121,7 @@ func (s *Set) Flag(name string) IFlag {
 	}
 
 	if len(name) == 1 {
-		a := s.ByShorthand(rune(name[0]))
+		a := s.ByShorthand(name)
 		if fl, ok := a.(IFlag); ok {
 			return fl
 		}
@@ -149,12 +149,12 @@ func (s *Set) AddFlag(f IFlag, opts ...Option) error {
 	name := f.Name()
 	k := FlagType.getIdentifier(name)
 
-	if sh := f.Shorthand(); sh != noShorthand {
+	if sh := f.Shorthand(); sh != "" {
 		if an, exists := s.shorthands[sh]; exists {
 			return fmt.Errorf("%w: shorthand already in use by %q", ErrDuplicate, an.Name())
 		}
 		s.shorthands[sh] = k
-		s.k2n[FlagType.getIdentifier(fmt.Sprintf("%c", sh))] = name
+		s.k2n[FlagType.getIdentifier(sh)] = name
 	}
 
 	s.flags[name] = f
@@ -163,7 +163,7 @@ func (s *Set) AddFlag(f IFlag, opts ...Option) error {
 	return nil
 }
 
-// Key returns the key-value argument for the given Name/identifier, if it exists, otherwise nil.
+// Key returns the key-value argument for the given Id/identifier, if it exists, otherwise nil.
 func (s *Set) Key(name string) IKeyValue {
 
 	if f, exists := s.keys[name]; exists {
@@ -171,7 +171,7 @@ func (s *Set) Key(name string) IKeyValue {
 	}
 
 	if len(name) == 1 {
-		a := s.ByShorthand(rune(name[0]))
+		a := s.ByShorthand(name)
 		if kv, ok := a.(IKeyValue); ok {
 			return kv
 		}
@@ -198,12 +198,12 @@ func (s *Set) AddKeyValue(kv IKeyValue, opts ...Option) error {
 	name := kv.Name()
 	k := KeyValueType.getIdentifier(name)
 
-	if sh := kv.Shorthand(); sh != noShorthand {
+	if sh := kv.Shorthand(); sh != "" {
 
 		if existingArgKey, shorthandExists := s.shorthands[sh]; shorthandExists {
 			return fmt.Errorf("%w: shorthand already in use by %q", ErrDuplicate, existingArgKey.Name())
 		}
-		s.k2n[KeyValueType.getIdentifier(fmt.Sprintf("%c", sh))] = name
+		s.k2n[KeyValueType.getIdentifier(sh)] = name
 		s.shorthands[sh] = k
 	}
 
@@ -293,13 +293,14 @@ func (s *Set) AddPipe(p IPipe, opts ...Option) error {
 	if s.pipe == nil {
 		p.updateMetadata(opts...)
 		s.pipe = p
+		s.k2n[Pipe("").argName()] = p.Name()
 	} else {
 		return ErrPipeExists
 	}
 	return nil
 }
 
-// argMap is a collection of Arg implementations (of the same Type), indexed by their Name
+// argMap is a collection of Arg implementations (of the same Type), indexed by their Id
 type argMap[A Arg] map[string]A
 
 // List returns all the Arg(s) within the collection.
@@ -315,7 +316,7 @@ func (s argMap[A]) List() []A {
 	return out
 }
 
-// Get returns an Arg with the given Name, if it exists within the collection.
+// Get returns an Arg with the given Id, if it exists within the collection.
 func (s argMap[A]) Get(name string) A {
 	return s[name]
 }
