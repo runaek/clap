@@ -1,4 +1,5 @@
-![Tests](https://github.com/runaek/clap/actions/workflows/test/badge.svg)
+![Tests (dev)](https://github.com/runaek/clap/workflows/test/badge.svg?branch=dev)
+![Tests](https://github.com/runaek/clap/workflows/test/badge.svg)
 
 ---
 ## Command-Line Argument Parser
