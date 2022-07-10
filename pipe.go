@@ -23,10 +23,14 @@ func CSVPipe[T any](variable *T, parser parse.Parser[T], options ...Option) *Pip
 
 func NewPipeArg[T any](variable *T, parser parse.Parser[T], piper Piper, input FileReader, options ...Option) *PipeArg[T] {
 	options = append(options, pipeOptions...)
+	md := NewMetadata(options...)
+	if md.Usage() == "" {
+		md.argUsage = "Argument supplied via data through a pipe."
+	}
 	return &PipeArg[T]{
 		piper:    piper,
 		input:    input,
-		md:       NewMetadata(options...),
+		md:       md,
 		v:        NewVariable[T](variable, parser),
 		supplied: nil,
 	}
@@ -34,10 +38,14 @@ func NewPipeArg[T any](variable *T, parser parse.Parser[T], piper Piper, input F
 
 func PipeUsingVariable[T any](piper Piper, input FileReader, v Variable[T], options ...Option) *PipeArg[T] {
 	options = append(options, pipeOptions...)
+	md := NewMetadata(options...)
+	if md.Usage() == "" {
+		md.argUsage = "Argument supplied via data through a pipe."
+	}
 	return &PipeArg[T]{
 		piper:    piper,
 		input:    input,
-		md:       NewMetadata(options...),
+		md:       md,
 		v:        v,
 		supplied: nil,
 	}
@@ -57,7 +65,7 @@ type IPipe interface {
 }
 
 var pipeOptions = []Option{
-	withNoShorthand(), withDefaultDisabled(), AsOptional(),
+	withDefaultDisabled(), AsOptional(),
 }
 
 // Pipe is an Identifier for the PipeArg.
@@ -111,8 +119,8 @@ func (p *PipeArg[T]) Type() Type {
 	return PipeType
 }
 
-func (p *PipeArg[T]) Shorthand() rune {
-	return noShorthand
+func (p *PipeArg[T]) Shorthand() string {
+	return ""
 }
 
 func (p *PipeArg[T]) Usage() string {
@@ -168,9 +176,10 @@ func (p *PipeArg[T]) IsSupplied() (cond bool) {
 	log.Debug("Program Input", zap.String("fn", fi.Name()), zap.Stringer("fm", fi.Mode()), zap.Int64("size", fi.Size()))
 
 	if fi.Mode()&os.ModeNamedPipe != 0 && fi.Size() > 0 {
+		log.Debug("Pipe detected.")
 		return true
 	}
-
+	log.Debug("Pipe not detected.")
 	return false
 }
 
@@ -207,7 +216,7 @@ func (p *PipeArg[T]) updateValue(_ ...string) error {
 		f := p.PipeInput()
 
 		if f == nil {
-			return errors.New("pipe has no inpu")
+			return errors.New("pipe has no input")
 		}
 		b, err := ioutil.ReadAll(f)
 

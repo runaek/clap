@@ -31,10 +31,10 @@ func TestPipeArg_Constructors(t *testing.T) {
 		},
 		"WithShorthandIsNoOp": {
 			Options: []Option{
-				WithShorthand('t'),
+				WithShorthand("t"),
 			},
 		},
-		"AsRequiredIsNoOpForVariadicPositions": {
+		"AsRequiredIsNoOp": {
 			Options: []Option{
 				AsRequired(),
 			},
@@ -51,7 +51,7 @@ func TestPipeArg_Constructors(t *testing.T) {
 
 			a.False(p.md.HasDefault(), "PipeArg cannot have a default value")
 			a.Equal("", p.Default(), "PipeArg default value should be an empty string")
-			a.Equalf(noShorthand, p.Shorthand(), "PipeArg shorthand should be %d", noShorthand)
+			a.Equalf("", p.Shorthand(), "PipeArg shorthand should be ''")
 			a.False(p.IsRequired(), "PipeArg should not be required")
 
 		})

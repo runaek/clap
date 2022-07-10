@@ -33,7 +33,7 @@ func TestPositionalArg_Constructors(t *testing.T) {
 		},
 		"WithShorthandIsNoOp": {
 			Options: []Option{
-				WithShorthand('t'),
+				WithShorthand("t"),
 			},
 		},
 		"AsRequiredIsNoOpForVariadicPositions": {
@@ -53,13 +53,13 @@ func TestPositionalArg_Constructors(t *testing.T) {
 
 			a.False(p.md.HasDefault(), "PositionalArg should never have a default value")
 			a.Equal("", p.Default(), "PositionalArg default value should be an empty string")
-			a.Equalf(noShorthand, p.Shorthand(), "PositionalArg shorthand should be %d", noShorthand)
+			a.Equalf("", p.Shorthand(), "PositionalArg shorthand should be empty")
 
 			ps := NewPositions[int](&tc.vs, 2, parse.Int{}, tc.Options...)
 
 			a.False(p.md.HasDefault(), "PositionalArg should never have a default value")
 			a.Equal("", p.Default(), "PositionalArg default value should be an empty string")
-			a.Equalf(noShorthand, p.Shorthand(), "PositionalArg shorthand should be %d", noShorthand)
+			a.Equalf("", p.Shorthand(), "PositionalArg shorthand should be empty")
 			a.False(ps.IsRequired(), "PositionalArgs should not be required")
 		})
 	}

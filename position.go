@@ -28,8 +28,14 @@ func NewPositions[T any](variables *[]T, fromIndex int, parser parse.Parser[T], 
 
 func PositionUsingVariable[T any](index int, v Variable[T], opts ...Option) *PositionalArg[T] {
 	opts = append(opts, positionOptions...)
+	md := NewMetadata(opts...)
+
+	if md.Usage() == "" {
+		md.argUsage = "A positional argument."
+	}
+	opts = append(opts, positionOptions...)
 	return &PositionalArg[T]{
-		md:       NewMetadata(opts...),
+		md:       md,
 		v:        v,
 		argIndex: index,
 	}
@@ -37,8 +43,13 @@ func PositionUsingVariable[T any](index int, v Variable[T], opts ...Option) *Pos
 
 func PositionsUsingVariable[T any](fromIndex int, v Variable[[]T], opts ...Option) *PositionalArg[[]T] {
 	opts = append(opts, positionOptions...)
+	md := NewMetadata(opts...)
+
+	if md.Usage() == "" {
+		md.argUsage = "Remaining positional arguments."
+	}
 	return &PositionalArg[[]T]{
-		md:            NewMetadata(opts...),
+		md:            md,
 		v:             v,
 		argStartIndex: fromIndex,
 	}
@@ -52,7 +63,7 @@ func (i Position) argName() argName {
 }
 
 var positionOptions = []Option{
-	withNoShorthand(), withDefaultDisabled(),
+	withDefaultDisabled(),
 }
 
 // A PositionalArg represents a particular index (or indexes) of positional arguments representing some type T.
@@ -91,8 +102,8 @@ func (p *PositionalArg[T]) Usage() string {
 	return p.md.Usage()
 }
 
-func (p *PositionalArg[T]) Shorthand() rune {
-	return noShorthand
+func (p *PositionalArg[T]) Shorthand() string {
+	return ""
 }
 
 func (p *PositionalArg[T]) ValueType() string {

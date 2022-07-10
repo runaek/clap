@@ -34,9 +34,16 @@ func NewKeyValues[T any](variables *[]T, name string, p parse.Parser[T], opts ..
 
 // KeyValueUsingVariable allows a KeyValueArg to be constructed using a Variable.
 func KeyValueUsingVariable[T any](name string, v Variable[T], opts ...Option) *KeyValueArg[T] {
+	md := NewMetadata(opts...)
+
+	if md.Usage() == "" {
+		var zero T
+		md.argUsage = fmt.Sprintf("%s - a %T key-value variable.", name, zero)
+	}
+
 	kv := &KeyValueArg[T]{
 		Key: name,
-		md:  NewMetadata(opts...),
+		md:  md,
 		v:   v,
 	}
 
@@ -45,9 +52,15 @@ func KeyValueUsingVariable[T any](name string, v Variable[T], opts ...Option) *K
 
 // KeyValuesUsingVariable allows a repeatable KeyValueArg to be constructed using Variable.
 func KeyValuesUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *KeyValueArg[[]T] {
+	md := NewMetadata(opts...)
+
+	if md.Usage() == "" {
+		var zero T
+		md.argUsage = fmt.Sprintf("%s - a %T key-value variable.", name, zero)
+	}
 	kv := &KeyValueArg[[]T]{
 		Key:        name,
-		md:         NewMetadata(opts...),
+		md:         md,
 		v:          v,
 		repeatable: true,
 	}
@@ -94,7 +107,7 @@ func (k *KeyValueArg[T]) Usage() string {
 	return k.md.Usage()
 }
 
-func (k *KeyValueArg[T]) Shorthand() rune {
+func (k *KeyValueArg[T]) Shorthand() string {
 	return k.md.Shorthand()
 }
 

@@ -27,7 +27,7 @@ func Help(helpRequested *bool, desc string) *FlagArg[bool] {
 		desc = "Display the help-text for a command or program."
 	}
 
-	fl := NewFlagP[bool](helpRequested, "help", 'h', parse.Bool{}, WithUsage(desc), WithDefault("false"))
+	fl := NewFlagP[bool](helpRequested, "help", "h", parse.Bool{}, WithUsage(desc), WithDefault("false"))
 	return fl
 }
 
@@ -43,24 +43,30 @@ func NewFlags[T any](val *[]T, name string, parser parse.Parser[T], options ...O
 }
 
 // NewFlagsP is a constructor for a repeatable *FlagArg[[]T] with a shorthand.
-func NewFlagsP[T any](val *[]T, name string, shorthand rune, parser parse.Parser[T], options ...Option) *FlagArg[[]T] {
+func NewFlagsP[T any](val *[]T, name string, shorthand string, parser parse.Parser[T], options ...Option) *FlagArg[[]T] {
 	f := NewFlagP[[]T](val, name, shorthand, parse.SliceParser[T](parser), options...)
 	f.repeatable = true
 	return f
 }
 
 // NewFlagP is a constructor for some new *FlagArg[T] with a shorthand.
-func NewFlagP[T any](val *T, name string, shorthand rune, parser parse.Parser[T], opts ...Option) *FlagArg[T] {
+func NewFlagP[T any](val *T, name string, shorthand string, parser parse.Parser[T], opts ...Option) *FlagArg[T] {
 	opts = append(opts, WithShorthand(shorthand))
 	f := NewFlag[T](val, name, parser, opts...)
 	return f
 }
 
-// FlagUsingVariable is a constructor for a FlagArg using a Name and some Variable.
+// FlagUsingVariable is a constructor for a FlagArg using a Id and some Variable.
 func FlagUsingVariable[T any](name string, v Variable[T], opts ...Option) *FlagArg[T] {
+	md := NewMetadata(opts...)
+
+	if md.Usage() == "" {
+		var zero T
+		md.argUsage = fmt.Sprintf("%s - a %T flag variable.", name, zero)
+	}
 	f := &FlagArg[T]{
 		Key: name,
-		md:  NewMetadata(opts...),
+		md:  md,
 		v:   v,
 	}
 
@@ -76,11 +82,18 @@ func FlagUsingVariable[T any](name string, v Variable[T], opts ...Option) *FlagA
 	return f
 }
 
-// FlagsUsingVariable is a constructor for a repeatable FlagArg using a Name and some Variable.
+// FlagsUsingVariable is a constructor for a repeatable FlagArg using a Id and some Variable.
 func FlagsUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *FlagArg[[]T] {
+	md := NewMetadata(opts...)
+
+	if md.Usage() == "" {
+		var zero T
+		md.argUsage = fmt.Sprintf("%s - a repeatable %T flag variable.", name, zero)
+	}
+
 	f := &FlagArg[[]T]{
 		Key: name,
-		md:  NewMetadata(opts...),
+		md:  md,
 		v:   v,
 	}
 
@@ -125,7 +138,7 @@ func (f *FlagArg[T]) Usage() string {
 	return f.md.Usage()
 }
 
-func (f *FlagArg[T]) Shorthand() rune {
+func (f *FlagArg[T]) Shorthand() string {
 	return f.md.Shorthand()
 }
 
