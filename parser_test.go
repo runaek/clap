@@ -310,6 +310,9 @@ func TestParser_Usage(t *testing.T) {
 	a.NoError(outF.Close())
 
 	outF2, err := os.OpenFile(filepath.Join(tmpDir, "usage_output"), os.O_RDONLY, os.ModePerm)
+
+	defer outF2.Close()
+
 	a.NoError(err)
 	data, err := ioutil.ReadAll(outF2)
 
