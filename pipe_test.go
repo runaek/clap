@@ -69,7 +69,6 @@ func TestParser_Pipe(t *testing.T) {
 
 	_, writeErr := out.WriteString("value,uno")
 	a.NoError(writeErr)
-	a.NoError(out.Close())
 
 	p.Stdin = in
 
