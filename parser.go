@@ -268,7 +268,7 @@ func (p *Parser) Parse(argv []string) {
 	if argv == nil {
 		log.Debug("Using os.Args", zap.Strings("input", os.Args))
 		argv = os.Args[1+p.Shift:]
-	} else if len(argv) <= p.Shift {
+	} else if len(argv) <= p.Shift && len(argv) > 0 {
 		p.pErr = fmt.Errorf("unable to parse, invalid number of arguments: got %d but want at least %d", len(argv), p.Shift)
 		return
 	}
@@ -334,7 +334,7 @@ func (p *Parser) Ok() *Parser {
 	}
 
 	if HandleError(p.Stderr, p.ErrorHandling, parserErr) {
-		_, _ = fmt.Fprint(p.Stdout, parserErr)
+		_, _ = fmt.Fprintln(p.Stdout, parserErr)
 		if !p.SuppressUsage {
 			p.Usage()
 		}
@@ -428,6 +428,8 @@ func (p *Parser) Usage() {
 
 	if p.Name == "" {
 		dat.Name = p.Id
+	} else if p.Id == "SYSTEM" {
+		dat.Name = "<program_name>"
 	} else {
 		dat.Name = p.Name
 	}
@@ -441,7 +443,6 @@ func (p *Parser) Usage() {
 	positionalArgs := make([]string, len(p.Positions()))
 
 	for _, pa := range p.Positions() {
-		//dat.Arguments = append(dat.Arguments, )
 		k := fmt.Sprintf("%d", pa.Index())
 
 		usage := pa.Usage()

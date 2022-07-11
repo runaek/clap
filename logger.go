@@ -1,9 +1,12 @@
 package clap
 
-import "go.uber.org/zap"
+import (
+	"go.uber.org/zap"
+	"os"
+)
 
 // TODO: make no-op log
-var log, _ = zap.NewDevelopment()
+var log = zap.NewNop()
 
 // SetLogger adds a global log for the clap package.
 func SetLogger(l *zap.Logger) {
@@ -11,4 +14,15 @@ func SetLogger(l *zap.Logger) {
 		return
 	}
 	log = l
+}
+
+func init() {
+	_, exists := os.LookupEnv("CLAP_DEBUG")
+
+	if !exists {
+		return
+	}
+
+	l, _ := zap.NewDevelopment()
+	SetLogger(l)
 }

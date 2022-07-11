@@ -4,7 +4,29 @@ import (
 	"fmt"
 	"github.com/runaek/clap"
 	"github.com/runaek/clap/pkg/parse"
+	"os"
 )
+
+var (
+	parser = clap.New("demo").
+		Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe)
+)
+
+func main() {
+	parser.Parse(os.Args[1:])
+	parser.Ok()
+
+	fmt.Printf("Name:    %s\n", name)
+	fmt.Printf("Debug:   %t\n", debug)
+	fmt.Printf("Dev:     %t\n", dev)
+	fmt.Printf("Func:    %s\n", funcName)
+	fmt.Printf("Args:    %s\n", args)
+	fmt.Printf("CSVArgs: %s\n", csvArgs)
+	fmt.Printf("Counter: %d\n", counter)
+	fmt.Printf("Id:      %s\n", ident)
+
+	clap.Ok()
+}
 
 var (
 	name    string
@@ -47,27 +69,3 @@ var (
 	csvPipe = clap.CSVPipe[[]string](&csvArgs, parse.Strings{},
 		clap.WithUsage("Comma-separated data from a pipe."))
 )
-
-func main() {
-	clap.SetName("demo")
-	clap.SetDescription("This is a demonstration program.")
-
-	if err := clap.Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe); err != nil {
-		panic(err)
-	}
-
-	if err := clap.Parse(); err != nil {
-		fmt.Printf("Parser Error: %s\n", err)
-	}
-
-	fmt.Printf("Name:    %s\n", name)
-	fmt.Printf("Debug:   %t\n", debug)
-	fmt.Printf("Dev:     %t\n", dev)
-	fmt.Printf("Func:    %s\n", funcName)
-	fmt.Printf("Args:    %s\n", args)
-	fmt.Printf("CSVArgs: %s\n", csvArgs)
-	fmt.Printf("Counter: %d\n", counter)
-	fmt.Printf("Id:      %s\n", ident)
-
-	clap.Ok()
-}
