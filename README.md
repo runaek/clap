@@ -1,6 +1,5 @@
-![Tests (dev)](https://github.com/runaek/clap/workflows/test/badge.svg?branch=dev)
-![Tests](https://github.com/runaek/clap/workflows/test/badge.svg)
-![Tests1](https://img.shields.io/appveyor/tests/runaek/clap?label=Main)
+![Tests (dev)](https://github.com/runaek/clap/workflows/test/badge.svg?branch=dev "Development")
+![Tests](https://github.com/runaek/clap/workflows/test/badge.svg "Tests" )
 ---
 ## Command-Line Argument Parser
 
