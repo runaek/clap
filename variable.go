@@ -6,8 +6,6 @@ import (
 	"os"
 )
 
-//go:generate mockgen -destination=pkg/testing/mocks.go -package=clap github.com/runaek/clap FileReader,FileWriter,FileInfo
-
 // FileWriter represents some type of file-like object that would be used as an output we can write to.
 //
 // Usually, in this package, values of this type will be set to os.Stdout by default.
