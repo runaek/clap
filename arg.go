@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+//go:generate mockgen -destination=mocks.go -copyright_file=mock_header.txt -package=clap github.com/runaek/clap FileReader,FileWriter,FileInfo,PositionalDeriver,KeyValueDeriver,FlagDeriver
+
 // Arg is the shared behaviour of all command-line input types (FlagType, KeyValueType and PositionType). It essentially
 // exposes an API similar to the behaviour seen in the standard 'flags' package, extending support to key-value and
 // positional arguments.
