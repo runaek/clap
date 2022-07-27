@@ -71,7 +71,6 @@ linters:
     - nlreturn
     - noctx
     - nolintlint
-    - nonamedreturns
     - nosprintfhostport
     - paralleltest
     - prealloc
@@ -102,6 +101,7 @@ linters:
     - varnamelen
     - exhaustive
     - exhaustivestruct
+    - nonamedreturns
   presets:
     - bugs
     - comment

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-//go:generate mockgen -destination=mocks.go -copyright_file=mock_header.txt -package=clap github.com/runaek/clap FileReader,FileWriter,FileInfo,PositionalDeriver,KeyValueDeriver,FlagDeriver
+//go:generate mockgen -destination=mocks.go -copyright_file=internal/mock_header.txt -package=clap github.com/runaek/clap FileReader,FileWriter,FileInfo,PositionalDeriver,KeyValueDeriver,FlagDeriver
 
 // Arg is the shared behaviour of all command-line input types (FlagType, KeyValueType and PositionType). It essentially
 // exposes an API similar to the behaviour seen in the standard 'flags' package, extending support to key-value and
@@ -25,8 +25,8 @@ import (
 //	var (
 //		strVal string
 //		numVal int
-//		myArg = NewKeyValue[string](&strVal, "arg1", parse.String, <options>...) // e.g. arg1=Test123 => strVal=Test123
-//		numFlag = NewFlag[int](&numVal, "amount", parse.Int, <options>...)       // e.g. --amount=123 => numVal=123
+//		myArg = NewKeyValue[string](&strVal, "arg1", parse.String, <options>...) // arg1=Test123 => strVal=Test123
+//		numFlag = NewFlag[int](&numVal, "amount", parse.Int, <options>...)       // --amount=123 => numVal=123
 //
 //		parser = clap.New("program-Id").
 //				Add(myArg, numFlag).
