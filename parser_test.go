@@ -329,6 +329,7 @@ OPTIONS (<key>=<value>)
 
 FLAGS
 	[-f]  --f1               : f1 - a []string flag variable.
+	[-h]  --help             : Display the help-text for the program.
 `, string(data))
 
 }

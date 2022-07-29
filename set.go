@@ -20,7 +20,7 @@ func NewSet() *Set {
 
 func NewSetWithHelp() *Set {
 	s := NewSet()
-	h := NewFlagP[bool](nil, "help", "h", parse.Bool{})
+	h := NewFlagP[bool](nil, "help", "h", parse.Bool{}, WithUsage("Display the help-text for the program."))
 	_ = s.AddFlag(h)
 
 	return s
