@@ -67,7 +67,7 @@ func TestDerive(t *testing.T) {
 
 	a.ElementsMatch(exp, actNames)
 
-	p := New("test_parser")
+	p := Must("test_parser")
 
 	p.Add(act...)
 

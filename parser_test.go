@@ -75,7 +75,7 @@ func (tc TestMockParser) Run(t *testing.T) {
 	tc.TC(&tc)
 
 	a := assert.New(t)
-	sut := New("test-parser")
+	sut := Must("test-parser")
 
 	if tc.setup != nil {
 		tc.setup(sut)

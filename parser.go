@@ -23,18 +23,19 @@ const (
 	PanicOnError    = ErrorHandling(flag.PanicOnError)
 )
 
-// HandleError handles some error according to the ErrorHandling, returns false if e == nil, otherwise what/whether the
+// handleError handles some error according to the ErrorHandling, returns false if e == nil, otherwise what/whether the
 // function returns is determined by the ErrHandling mode:
 //
 //	ContinueOnError => return true
 //	PanicOnError    => panic with error message
 //  ExitOnError     => write error message to w and exit 1
-func HandleError(w io.Writer, eh ErrorHandling, e error) bool {
+func handleError(w io.Writer, eh ErrorHandling, e error) bool {
+
 	if e == nil {
 		return false
 	}
 
-	me, isMultiErr := e.(*multierror.Error) // nolint: errorlint
+	me, isMultiErr := e.(*multierror.Error)
 
 	if isMultiErr {
 		e = me.ErrorOrNil()
@@ -46,12 +47,19 @@ func HandleError(w io.Writer, eh ErrorHandling, e error) bool {
 
 	switch eh {
 	case ContinueOnError:
-		return true
+		if e == ErrHelp {
+			return false
+		}
 	case PanicOnError:
-		panic(e)
+		if e != ErrHelp {
+			panic(e)
+		}
 	case ExitOnError:
-		_, _ = fmt.Fprint(w, e)
-		os.Exit(1)
+		if e != ErrHelp {
+			_, _ = fmt.Fprint(w, e)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	default:
 		panic(fmt.Errorf("invalid error handling detected whilst handling error: %w", e))
 	}
@@ -60,13 +68,15 @@ func HandleError(w io.Writer, eh ErrorHandling, e error) bool {
 }
 
 // New creates a new command-line argument Parser with ErrorHandling mode ContinueOnError.
-func New(name string) *Parser {
-	return NewParser(name, ContinueOnError)
+func New(name string, elements ...any) (*Parser, error) {
+	p := NewParser(name, ContinueOnError).Using(elements...)
+
+	return p, p.Valid()
 }
 
 func Must(name string, elements ...any) *Parser {
 
-	p, err := NewUsing(name, ContinueOnError, elements...)
+	p, err := NewAt(name, ContinueOnError, elements...)
 
 	if err != nil {
 		panic(fmt.Errorf("unable to construct Parser: %w", err))
@@ -75,17 +85,17 @@ func Must(name string, elements ...any) *Parser {
 	return p
 }
 
-// NewUsing is a constructor for a Parser at a specific ErrorHandling level.
+// NewAt is a constructor for a Parser at a specific ErrorHandling level.
 //
-// If no elements are supplied, NewUsing is guaranteed to return a nil error.
-//
-// TODO: If elements are supplied, extra Arg(s) are attempted to be derived from each element.
-func NewUsing(name string, errHandling ErrorHandling, elements ...any) (*Parser, error) {
+// If no elements are supplied, NewAt is guaranteed to return a nil error.
+func NewAt(name string, errHandling ErrorHandling, elements ...any) (*Parser, error) {
 
 	s := NewParser(name, errHandling)
 
 	if len(elements) != 0 {
+
 		args, err := DeriveAll(elements...)
+
 		if err != nil {
 			return s, err
 		}
@@ -138,6 +148,7 @@ type Parser struct {
 
 	// Name of the program
 	Name string
+
 	// Description of the program
 	Description string
 
@@ -257,6 +268,12 @@ func (p *Parser) AddPipe(pipe IPipe, options ...Option) *Parser {
 	return p
 }
 
+// WithDescription sets a description for the Parser.
+func (p *Parser) WithDescription(desc string) *Parser {
+	p.Description = desc
+	return p
+}
+
 // Parse command-line input.
 //
 // Parse does not return an error, instead, during the run any errors that occur are collected and stored internally
@@ -307,7 +324,7 @@ func (p *Parser) Parse(argv ...string) {
 		if errors.Is(err, ErrHelp) {
 			log.Debug("Help requested")
 			p.pErr = multierror.Append(p.pErr, ErrHelp)
-			return
+			continue
 		}
 
 		if errors.Is(err, ErrUnidentified) && p.Strict {
@@ -333,13 +350,20 @@ func (p *Parser) Parse(argv ...string) {
 
 	p.parse()
 
-	HandleError(p.Stderr, p.ErrorHandling, p.Err())
+	if errors.Is(p.Err(), ErrHelp) {
+		return
+	}
+	handleError(p.Stderr, p.ErrorHandling, p.Err())
 }
 
 // Ok is a helper function that panics if there were any Parser errors. This is useful for running at the end of a chain
 // of method calls for the Parser.
 //
 // Returns the Parser for convenience.
+
+// Ok checks the state of the Parser (both parse and validation errors, unless SuppressValidation is set)
+//
+// Returns the *Parser for convenience.
 func (p *Parser) Ok() *Parser {
 
 	parserErr := p.pErr
@@ -354,13 +378,12 @@ func (p *Parser) Ok() *Parser {
 		os.Exit(0)
 	}
 
-	if HandleError(p.Stderr, p.ErrorHandling, parserErr) {
+	if handleError(p.Stderr, p.ErrorHandling, parserErr) {
 		_, _ = fmt.Fprintln(p.Stdout, parserErr)
 
 		if !p.SuppressUsage {
 			p.Usage()
 		}
-		fmt.Println("exiting")
 		os.Exit(1)
 	}
 
@@ -382,7 +405,7 @@ func (p *Parser) Err() error {
 		return nil
 	}
 
-	switch err := p.pErr.(type) { // nolint: errorlint
+	switch err := p.pErr.(type) {
 	// make sure we don't return an empty non-nil multi error
 	case *multierror.Error:
 		if len(err.Errors) == 0 {

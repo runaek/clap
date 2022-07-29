@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	parser = clap.New("demo").
+	parser = clap.Must("demo").
 		Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe)
 )
 
@@ -23,8 +23,6 @@ func main() {
 	fmt.Printf("CSVArgs: %s\n", csvArgs)
 	fmt.Printf("Counter: %d\n", counter)
 	fmt.Printf("Id:      %s\n", ident)
-
-	clap.Ok()
 }
 
 var (

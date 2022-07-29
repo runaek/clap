@@ -13,7 +13,7 @@ type stringTestData struct {
 	Value1        string `cli:"!@k1:string"`
 	Value1Usage   string
 	Value1Default string
-	Value2        string `cli:"-f1:string"`
+	Value2        string `cli:"-f1|s:string"`
 	Value2Usage   string
 	Value3        string `cli:"-f2:string"`
 	Value3Usage   string
@@ -39,7 +39,7 @@ func TestDerive_String(t *testing.T) {
 	a.NoError(err)
 	a.Len(args, 4)
 
-	p := clap.New("test_parser").Add(args...)
+	p := clap.Must("test_parser").Add(args...)
 
 	p.Parse("test", "args", "--f1=my_value", "k1=my_other_value")
 	a.NoError(p.Err())
@@ -61,6 +61,7 @@ func TestDerive_String(t *testing.T) {
 		case "f1":
 			a.Equal("value-2 usage", arg.Usage(), msg)
 			a.False(arg.IsRequired(), "expected f1 to *not* be Required")
+			a.Equal("s", arg.Shorthand())
 		case "1":
 			a.Equal("args usage", arg.Usage(), msg)
 			a.True(arg.IsRepeatable(), "expected positional arguments to be Repeatable")

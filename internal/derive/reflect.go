@@ -19,6 +19,8 @@ const (
 	PosType  = "#"
 )
 
+// TODO: improve error handling/reporting
+
 // Parse a struct into a *Program.
 func Parse(input any) (*Program, error) {
 	p := &Program{}
@@ -37,6 +39,7 @@ type Program struct {
 	defaults     map[string]string
 }
 
+// Args returns the *Argument in the order they are defined in the struct.
 func (p *Program) Args() []*Argument {
 	out := make([]*Argument, len(p.order))
 
@@ -58,6 +61,7 @@ func (p *Program) Args() []*Argument {
 	return out
 }
 
+// Decode some input type and attempt to derive a number of *Argument from struct-tags and fields.
 func (p *Program) Decode(input any) error {
 
 	if p.arguments == nil {
@@ -138,17 +142,32 @@ func (p *Program) Decode(input any) error {
 	return result.ErrorOrNil()
 }
 
+// isReference is a helper function for checking whether a struct-field is referring to another field (via the same
+// name - its prefix).
+//
+// It returns the cleaned name, and true if it is a reference, otherwise false and name is returned
+func isReference(name string) (string, bool) {
+
+	isRef := true
+	if strings.HasSuffix(name, nameUsage) {
+		name = strings.TrimSuffix(name, nameUsage)
+	} else if strings.HasSuffix(name, nameDescription) {
+		name = strings.TrimSuffix(name, nameDescription)
+	} else if strings.HasSuffix(name, nameDefault) {
+		name = strings.TrimSuffix(name, nameDefault)
+	} else {
+		isRef = false
+	}
+	return name, isRef
+}
+
 // parseArgument
 func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Argument, error) {
 
 	name := sf.Name
 
-	if strings.HasSuffix(sf.Name, nameUsage) {
-		name = strings.TrimSuffix(sf.Name, nameUsage)
-	} else if strings.HasSuffix(sf.Name, nameDescription) {
-		name = strings.TrimSuffix(sf.Name, nameDescription)
-	} else if strings.HasSuffix(sf.Name, nameDefault) {
-		name = strings.TrimSuffix(sf.Name, nameDefault)
+	if cleaned, isRef := isReference(name); isRef {
+		name = cleaned
 	}
 
 	arg, argExists := p.arguments[name]
@@ -207,25 +226,6 @@ func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Arg
 	}
 
 	return arg, nil
-}
-
-// isReference is a helper function for checking whether a struct-field is referring to another field (via the same
-// name - its prefix).
-//
-// It returns the cleaned name, and true if it is a reference, otherwise false and name is returned
-func isReference(name string) (string, bool) {
-
-	isRef := true
-	if strings.HasSuffix(name, nameUsage) {
-		name = strings.TrimSuffix(name, nameUsage)
-	} else if strings.HasSuffix(name, nameDescription) {
-		name = strings.TrimSuffix(name, nameDescription)
-	} else if strings.HasSuffix(name, nameDefault) {
-		name = strings.TrimSuffix(name, nameDefault)
-	} else {
-		isRef = false
-	}
-	return name, isRef
 }
 
 // newArgument attempts to construct an *Argument for some struct-field.
@@ -291,6 +291,16 @@ func newArgument(sf reflect.StructField) (*Argument, error) {
 
 	switch out.Type {
 	case FlagType, KeyType:
+
+		identItems := strings.Split(ident, "|")
+
+		if len(identItems) > 2 {
+			return nil, fmt.Errorf("invalid Tag syntax (identifier) at struct-field: %q - %s", name, tag)
+		} else if len(identItems) == 2 {
+			ident = identItems[0]
+			out.Alias = identItems[1]
+		}
+
 		out.Identifier = ident
 	case PosType:
 
