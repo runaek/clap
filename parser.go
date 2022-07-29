@@ -114,7 +114,7 @@ func NewParser(n string, errHandling ErrorHandling) *Parser {
 
 	return &Parser{
 		Id:            n,
-		Set:           NewSet(),
+		Set:           NewSetWithHelp(),
 		ErrorHandling: errHandling,
 		Stdout:        os.Stdout,
 		Stdin:         os.Stdin,

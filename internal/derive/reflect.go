@@ -48,6 +48,10 @@ func (p *Program) Args() []*Argument {
 			a.Usage = d
 		}
 
+		if d, ok := p.defaults[name]; ok {
+			a.Default = d
+		}
+
 		out[i] = a
 	}
 

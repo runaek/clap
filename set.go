@@ -2,6 +2,7 @@ package clap
 
 import (
 	"fmt"
+	"github.com/runaek/clap/pkg/parse"
 	"strconv"
 )
 
@@ -15,6 +16,14 @@ func NewSet() *Set {
 		positions:  argMap[IPositional]{},
 		posArgs:    map[int]string{},
 	}
+}
+
+func NewSetWithHelp() *Set {
+	s := NewSet()
+	h := NewFlagP[bool](nil, "help", "h", parse.Bool{})
+	_ = s.AddFlag(h)
+
+	return s
 }
 
 // A Set is a container for a command-line Arg(s) of any Type.
