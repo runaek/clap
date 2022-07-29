@@ -4,28 +4,86 @@
 ## Command-Line Argument Parser
 
 `clap` is a command-line argument parser for Go. It loosely mimics/extends the API in the standard library package `flag`.
+The idea is that you can easily define/use different types of arguments in your program:
+```go
+var (
+    myString string
+    myArg = clap.NewKeyValue[string](&myString, "my-arg", parse.String{})
+		
+    parser = clap.Must("my-program", myArg)
+)
+
+    
+func main() {
+    parser.Parse(nil)
+    parser.Ok()
+    
+    // do stuff with myArg
+}   
+```
+
 
 ### Usage
 `go get -u github.com/runaek/clap` (requires go1.18)
 
 ### Features
 
-* 
+* Supports key-value `KeyValueArg`, flag `FlagArg`, positional `PositionalArg` and pipe `PipeArg` arguments as input;
+* Easily extensible 'parser' for `Arg(s)` supporting user-defined types;
+* Auto-generate `Arg(s)` based on struct-definitions;
+* Capability to
 
-### Hello World
+### Arguments derived from struct-tags
 
 ```go
+// examples/derive/main.go 
 package main
 
 import (
-    "github.com/runaek/clap"
+	"fmt"
+	"github.com/runaek/clap"
+	_ "github.com/runaek/clap/pkg/derive"
+	"github.com/runaek/clap/pkg/parse"
 )
 
+type MyProgram struct {
+	Name       string `cli:"!#1:string"`
+	NameUsage  string
+	Roles      []string `cli:"#2...:strings"`
+	RolesUsage string
+
+	Level        int `cli:"-level:int"`
+	LevelUsage   string
+	LevelDefault string
+
+	Counter      parse.C `cli:"-counter:counter"`
+	CounterUsage string
+
+	Account        string `cli:"!@account:string"`
+	AccountUsage   string
+	AccountDefault string
+}
+
 var (
-	
+	prog = MyProgram{
+		NameUsage:      "Enter your name!",
+		RolesUsage:     "Enter a number of random words (roles).",
+		LevelUsage:     "Enter a level (number).",
+		LevelDefault:   "73",
+		CounterUsage:   "A counter for the number of times the flag is supplied.",
+		AccountUsage:   "A key-value for the 'account' to be used",
+		AccountDefault: "[default]",
+	}
+
+	parser = clap.Must("derived_demo", &prog)
 )
 
 func main() {
-    
+
+	parser.Parse(nil)
+	parser.Ok()
+
+	fmt.Printf("MyProgram Arguments:\n%+v\n", prog)
+
 }
 ```

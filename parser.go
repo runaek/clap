@@ -64,6 +64,17 @@ func New(name string) *Parser {
 	return NewParser(name, ContinueOnError)
 }
 
+func Must(name string, elements ...any) *Parser {
+
+	p, err := NewUsing(name, ContinueOnError, elements...)
+
+	if err != nil {
+		panic(fmt.Errorf("unable to construct Parser: %w", err))
+	}
+
+	return p
+}
+
 // NewUsing is a constructor for a Parser at a specific ErrorHandling level.
 //
 // If no elements are supplied, NewUsing is guaranteed to return a nil error.
@@ -73,22 +84,16 @@ func NewUsing(name string, errHandling ErrorHandling, elements ...any) (*Parser,
 
 	s := NewParser(name, errHandling)
 
-	if len(elements) == 0 {
-		return s, nil
+	if len(elements) != 0 {
+		args, err := DeriveAll(elements...)
+		if err != nil {
+			return s, err
+		}
+
+		s.Add(args...)
 	}
 
 	return s, s.Valid()
-}
-
-func Must(name string, errHandling ErrorHandling, elements ...any) *Parser {
-	p, err := NewUsing(name, errHandling, elements...)
-
-	if HandleError(p.Stderr, p.ErrorHandling, err) {
-		_, _ = fmt.Fprintln(p.Stderr, err)
-		os.Exit(1)
-	}
-
-	return p
 }
 
 // NewParser is a constructor for a new command-line argument Parser.
@@ -256,7 +261,7 @@ func (p *Parser) AddPipe(pipe IPipe, options ...Option) *Parser {
 // Parse does not return an error, instead, during the run any errors that occur are collected and stored internally
 // to be retrieved via the Err method. If the ErrorHandling is not set to ContinueOnError, then errors during Parse
 // will cause the program to either panic of exit.
-func (p *Parser) Parse(argv []string) {
+func (p *Parser) Parse(argv ...string) {
 
 	log.Debug("Parsing input",
 		zap.String("parser", p.Id),
@@ -265,7 +270,7 @@ func (p *Parser) Parse(argv []string) {
 		zap.Int("shift", p.Shift),
 		zap.Strings("input", argv))
 
-	if argv == nil {
+	if argv == nil || len(argv) == 0 {
 		log.Debug("Using os.Args", zap.Strings("input", os.Args))
 		argv = os.Args[1+p.Shift:]
 	} else if len(argv) <= p.Shift && len(argv) > 0 {
@@ -297,13 +302,21 @@ func (p *Parser) Parse(argv []string) {
 			continue
 		}
 
+		if errors.Is(err, ErrHelp) {
+			log.Debug("Help requested")
+			p.pErr = multierror.Append(p.pErr, ErrHelp)
+			return
+		}
+
 		if errors.Is(err, ErrUnidentified) && p.Strict {
 			scanErr := ErrScanning(err, consumed...)
 			log.Warn("Error during token scan", zap.Error(scanErr))
 			p.pErr = multierror.Append(p.pErr, scanErr)
+
 			continue
 		} else if errors.Is(err, ErrUnidentified) {
 			log.Warn("Unidentified argument error suppressed", zap.Error(err))
+
 			continue
 		}
 
@@ -333,11 +346,17 @@ func (p *Parser) Ok() *Parser {
 		parserErr = multierror.Append(parserErr, validationErr)
 	}
 
+	if errors.Is(parserErr, ErrHelp) {
+		p.Usage()
+		os.Exit(0)
+	}
+
 	if HandleError(p.Stderr, p.ErrorHandling, parserErr) {
 		_, _ = fmt.Fprintln(p.Stdout, parserErr)
 		if !p.SuppressUsage {
 			p.Usage()
 		}
+		fmt.Println("exiting")
 		os.Exit(1)
 	}
 
@@ -387,7 +406,7 @@ PIPE: {{ .Pipe }}
 
 ARGUMENTS
 {{- range .Arguments }}
-	{{ . -}}
+	{{ printf "%s" . -}}
 {{- end -}}
 {{- end }}
 
@@ -525,6 +544,9 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 	flagSingleDash := false
 	argValueDetected := false
 
+	if this == "-h" || this == "--help" {
+		return left, consumed, ErrHelp
+	}
 	// detect the Type and argID from 'this' and sanitize (additionally, calculated argValue if possible)
 	switch this[0] {
 	case '-':
@@ -802,7 +824,7 @@ func (p *Parser) parse() {
 
 	for _, a := range p.Args() {
 
-		log.Debug("Checking Argument", zap.String("name", a.Name()), zap.Stringer("type", a.Type()))
+		log.Debug("Checking Argument", zap.String("name", a.Name()), zap.Stringer("type", a.Type()), zap.String("default", a.Default()))
 
 		if a.IsParsed() {
 			p.updateState(a, ok)
@@ -811,10 +833,6 @@ func (p *Parser) parse() {
 
 		// error parsing has already been reported
 		if err := p.State(a); err != nil {
-			continue
-		}
-
-		if !a.IsRequired() {
 			continue
 		}
 

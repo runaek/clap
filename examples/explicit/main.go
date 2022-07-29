@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/runaek/clap"
 	"github.com/runaek/clap/pkg/parse"
-	"os"
 )
 
 var (
@@ -13,7 +12,7 @@ var (
 )
 
 func main() {
-	parser.Parse(os.Args[1:])
+	parser.Parse()
 	parser.Ok()
 
 	fmt.Printf("Name:    %s\n", name)

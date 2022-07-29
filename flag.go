@@ -235,6 +235,7 @@ func (f *FlagArg[T]) updateValue(s ...string) (err error) {
 func (f *FlagArg[T]) updateMetadata(opts ...Option) {
 	if f.md == nil {
 		f.md = NewMetadata(opts...)
+
 		return
 	}
 

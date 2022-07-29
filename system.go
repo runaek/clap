@@ -16,7 +16,7 @@ func Ok() {
 }
 
 func Parse() error {
-	System.Parse(os.Args[1:])
+	System.Parse(os.Args[1:]...)
 	return System.Err()
 }
 
