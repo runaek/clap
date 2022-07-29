@@ -33,7 +33,7 @@ func PositionUsingVariable[T any](index int, v Variable[T], opts ...Option) *Pos
 	if md.Usage() == "" {
 		md.argUsage = "A positional argument."
 	}
-	opts = append(opts, positionOptions...)
+
 	return &PositionalArg[T]{
 		md:       md,
 		v:        v,
@@ -147,6 +147,7 @@ func (p *PositionalArg[T]) updateMetadata(opts ...Option) {
 
 	if p.md == nil {
 		p.md = NewMetadata(opts...)
+
 		return
 	}
 

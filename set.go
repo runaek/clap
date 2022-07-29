@@ -70,6 +70,7 @@ func (s *Set) Args() []Arg {
 // Has returns true if there is an Arg with the given Identifier in the Set.
 func (s *Set) Has(id Identifier) bool {
 	_, exists := s.k2n[id.argName()]
+
 	return exists
 }
 
@@ -80,6 +81,7 @@ func (s *Set) Get(id Identifier) Arg {
 	}
 	an := id.argName()
 	name := an.Name()
+
 	switch an.Type() {
 	case FlagType:
 		return s.Flag(name)
@@ -114,7 +116,7 @@ func (s *Set) ByShorthand(sh string) Arg {
 }
 
 // Flag returns the flag for the given Id/identifier, if it exists, otherwise nil.
-func (s *Set) Flag(name string) IFlag {
+func (s *Set) Flag(name string) IFlag { // nolint: ireturn
 
 	if f, exists := s.flags[name]; exists {
 		return f
@@ -164,7 +166,7 @@ func (s *Set) AddFlag(f IFlag, opts ...Option) error {
 }
 
 // Key returns the key-value argument for the given Id/identifier, if it exists, otherwise nil.
-func (s *Set) Key(name string) IKeyValue {
+func (s *Set) Key(name string) IKeyValue { // nolint: ireturn
 
 	if f, exists := s.keys[name]; exists {
 		return f
@@ -214,7 +216,7 @@ func (s *Set) AddKeyValue(kv IKeyValue, opts ...Option) error {
 }
 
 // Pos returns the positional argument at the supplied index, if it exists, otherwise nil.
-func (s *Set) Pos(index int) IPositional {
+func (s *Set) Pos(index int) IPositional { // nolint: ireturn
 	k, exists := s.posArgs[index]
 
 	if !exists {
@@ -282,7 +284,7 @@ func (s *Set) AddPosition(a IPositional, opts ...Option) error {
 }
 
 // Pipe returns the pipe argument for the Set, if it exists, otherwise nil.
-func (s *Set) Pipe() IPipe {
+func (s *Set) Pipe() IPipe { // nolint: ireturn
 	return s.pipe
 }
 
@@ -308,6 +310,7 @@ func (s argMap[A]) List() []A {
 	out := make([]A, len(s))
 
 	i := 0
+
 	for _, a := range s {
 		out[i] = a
 		i++

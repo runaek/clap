@@ -25,6 +25,7 @@ func CSVPipe[T any](variable *T, parser parse.Parser[T], options ...Option) *Pip
 func NewPipeArg[T any](variable *T, parser parse.Parser[T], piper Piper, input FileReader, options ...Option) *PipeArg[T] {
 	options = append(options, pipeOptions...)
 	md := NewMetadata(options...)
+
 	if md.Usage() == "" {
 		md.argUsage = "Argument supplied via data through a pipe."
 	}
@@ -178,9 +179,11 @@ func (p *PipeArg[T]) IsSupplied() (cond bool) {
 
 	if fi.Mode()&os.ModeNamedPipe != 0 && fi.Size() > 0 {
 		log.Debug("Pipe detected.")
+
 		return true
 	}
 	log.Debug("Pipe not detected.")
+
 	return false
 }
 
@@ -197,6 +200,7 @@ func (p *PipeArg[T]) updateMetadata(options ...Option) {
 
 	if p.md == nil {
 		p.md = NewMetadata(options...)
+
 		return
 	}
 

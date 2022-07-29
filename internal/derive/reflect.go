@@ -47,7 +47,7 @@ func (p *Program) Args() []*Argument {
 		if d, ok := p.descriptions[name]; ok {
 			a.Usage = d
 		}
-		
+
 		out[i] = a
 	}
 
@@ -142,9 +142,9 @@ func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Arg
 	if strings.HasSuffix(sf.Name, nameUsage) {
 		name = strings.TrimSuffix(sf.Name, nameUsage)
 	} else if strings.HasSuffix(sf.Name, nameDescription) {
-		name = strings.Trim(sf.Name, nameDescription)
+		name = strings.TrimSuffix(sf.Name, nameDescription)
 	} else if strings.HasSuffix(sf.Name, nameDefault) {
-		name = strings.Trim(sf.Name, nameDefault)
+		name = strings.TrimSuffix(sf.Name, nameDefault)
 	}
 
 	arg, argExists := p.arguments[name]
@@ -173,6 +173,7 @@ func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Arg
 	default:
 
 		if t == "" {
+
 			return nil, nil
 		}
 
@@ -229,6 +230,7 @@ func isReference(name string) (string, bool) {
 func newArgument(sf reflect.StructField) (*Argument, error) {
 
 	if !sf.IsExported() {
+
 		return nil, nil
 	}
 
@@ -241,6 +243,7 @@ func newArgument(sf reflect.StructField) (*Argument, error) {
 	if isRef {
 		name = cleanedName
 	} else if tag == "" {
+
 		return nil, nil
 	}
 

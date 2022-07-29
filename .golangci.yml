@@ -26,13 +26,10 @@ linters:
     - errname
     - errorlint
     - execinquery
-    - exhaustruct
     - exportloopref
     - forbidigo
     - forcetypeassert
     - funlen
-    - gci
-    - gochecknoglobals
     - gochecknoinits
     - gocognit
     - goconst
@@ -40,13 +37,11 @@ linters:
     - gocyclo
     - godot
     - godox
-    - goerr113
     - gofmt
     - gofumpt
     - goheader
     - goimports
     - golint
-    - gomnd
     - gomoddirectives
     - gomodguard
     - goprintffuncname
@@ -58,7 +53,6 @@ linters:
     - importas
     - ineffassign
     - interfacer
-    - ireturn
     - lll
     - maintidx
     - makezero
@@ -67,7 +61,6 @@ linters:
     - nakedret
     - nestif
     - nilerr
-    - nilnil
     - nlreturn
     - noctx
     - nolintlint
@@ -97,11 +90,21 @@ linters:
     - whitespace
     - wsl
   disable:
+    - exhaustruct
+    - gochecknoglobals
     - wrapcheck
     - varnamelen
     - exhaustive
     - exhaustivestruct
     - nonamedreturns
+    - ireturn
+    - gomnd
+    - gci
+    - goerr113
+    - nilnil
+
+
+
   presets:
     - bugs
     - comment

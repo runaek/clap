@@ -20,6 +20,7 @@ type IKeyValue interface {
 // NewKeyValue is a constructor for a key-value argument from the command-line.
 func NewKeyValue[T any](variable *T, name string, p parse.Parser[T], opts ...Option) *KeyValueArg[T] {
 	v := NewVariable[T](variable, p)
+
 	return KeyValueUsingVariable[T](name, v, opts...)
 }
 
@@ -29,6 +30,7 @@ func NewKeyValue[T any](variable *T, name string, p parse.Parser[T], opts ...Opt
 // to be able to change this behaviour as required.
 func NewKeyValues[T any](variables *[]T, name string, p parse.Parser[T], opts ...Option) *KeyValueArg[[]T] {
 	v := NewVariables[T](variables, p)
+
 	return KeyValuesUsingVariable(name, v, opts...)
 }
 
@@ -113,6 +115,7 @@ func (k *KeyValueArg[T]) Shorthand() string {
 
 func (k *KeyValueArg[T]) ValueType() string {
 	var zero T
+
 	return strings.TrimPrefix(fmt.Sprintf("%T", zero), "*")
 }
 
@@ -143,6 +146,7 @@ func (k *KeyValueArg[T]) HasDefault() bool {
 func (k *KeyValueArg[T]) updateMetadata(opts ...Option) {
 	if k.md == nil {
 		k.md = NewMetadata(opts...)
+
 		return
 	}
 	k.md.updateMetadata(opts...)

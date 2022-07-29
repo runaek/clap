@@ -17,6 +17,7 @@ func Ok() {
 
 func Parse() error {
 	System.Parse(os.Args[1:]...)
+
 	return System.Err()
 }
 
@@ -30,6 +31,7 @@ func SetDescription(description string) {
 
 func Add(args ...Arg) error {
 	System.Add(args...)
+
 	return System.Valid()
 }
 

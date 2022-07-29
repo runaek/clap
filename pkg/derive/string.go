@@ -24,7 +24,7 @@ const (
 
 type stringDeriver struct{}
 
-func (s stringDeriver) DerivePosition(a any, i int, opts ...clap.Option) (clap.IPositional, error) {
+func (s stringDeriver) DerivePosition(a any, i int, opts ...clap.Option) (clap.IPositional, error) { // nolint: ireturn
 
 	v, ok := a.(*string)
 
@@ -35,7 +35,7 @@ func (s stringDeriver) DerivePosition(a any, i int, opts ...clap.Option) (clap.I
 	return clap.NewPosition[string](v, i, parse.String{}, opts...), nil
 }
 
-func (s stringDeriver) DeriveKeyValue(a any, name string, opts ...clap.Option) (clap.IKeyValue, error) {
+func (s stringDeriver) DeriveKeyValue(a any, name string, opts ...clap.Option) (clap.IKeyValue, error) { // nolint: ireturn
 	v, ok := a.(*string)
 
 	if !ok {
@@ -45,7 +45,7 @@ func (s stringDeriver) DeriveKeyValue(a any, name string, opts ...clap.Option) (
 	return clap.NewKeyValue[string](v, name, parse.String{}, opts...), nil
 }
 
-func (s stringDeriver) DeriveFlag(a any, name string, opts ...clap.Option) (clap.IFlag, error) {
+func (s stringDeriver) DeriveFlag(a any, name string, opts ...clap.Option) (clap.IFlag, error) { // nolint: ireturn
 	v, ok := a.(*string)
 
 	if !ok {
@@ -57,7 +57,7 @@ func (s stringDeriver) DeriveFlag(a any, name string, opts ...clap.Option) (clap
 
 type stringsDeriver struct{}
 
-func (s stringsDeriver) DerivePosition(a any, i int, opts ...clap.Option) (clap.IPositional, error) {
+func (s stringsDeriver) DerivePosition(a any, i int, opts ...clap.Option) (clap.IPositional, error) { // nolint: ireturn
 
 	v, ok := a.(*[]string)
 
@@ -68,7 +68,7 @@ func (s stringsDeriver) DerivePosition(a any, i int, opts ...clap.Option) (clap.
 	return clap.NewPositions[string](v, i, parse.String{}, opts...), nil
 }
 
-func (s stringsDeriver) DeriveKeyValue(a any, name string, opts ...clap.Option) (clap.IKeyValue, error) {
+func (s stringsDeriver) DeriveKeyValue(a any, name string, opts ...clap.Option) (clap.IKeyValue, error) { // nolint: ireturn
 	v, ok := a.(*[]string)
 
 	if !ok {
@@ -78,7 +78,7 @@ func (s stringsDeriver) DeriveKeyValue(a any, name string, opts ...clap.Option) 
 	return clap.NewKeyValues[string](v, name, parse.String{}, opts...), nil
 }
 
-func (s stringsDeriver) DeriveFlag(a any, name string, opts ...clap.Option) (clap.IFlag, error) {
+func (s stringsDeriver) DeriveFlag(a any, name string, opts ...clap.Option) (clap.IFlag, error) { // nolint: ireturn
 	v, ok := a.(*[]string)
 
 	if !ok {

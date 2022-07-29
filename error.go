@@ -28,7 +28,7 @@ func (err Error) Error() string {
 
 func (err Error) Is(target error) bool {
 
-	parseErr, ok := target.(Error)
+	parseErr, ok := target.(Error) // nolint: errorlint
 
 	if !ok {
 		return false

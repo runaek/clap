@@ -110,7 +110,6 @@ func deriveArgs(src any) ([]Arg, error) {
 				arg = a
 			}
 		default:
-			fmt.Printf("uh oh")
 			return nil, fmt.Errorf("invalid Type for derived Argument: %s", v.Type)
 		}
 
@@ -149,6 +148,7 @@ func DeriveAll(sources ...any) ([]Arg, error) {
 
 		if a, ok := s.(Arg); ok {
 			out = append(out, a)
+
 			continue
 		}
 

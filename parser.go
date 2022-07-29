@@ -34,7 +34,7 @@ func HandleError(w io.Writer, eh ErrorHandling, e error) bool {
 		return false
 	}
 
-	me, isMultiErr := e.(*multierror.Error)
+	me, isMultiErr := e.(*multierror.Error) // nolint: errorlint
 
 	if isMultiErr {
 		e = me.ErrorOrNil()
@@ -214,7 +214,7 @@ func (p *Parser) Add(args ...Arg) *Parser {
 // State checks the 'state' of some Arg by its Identifier *after* Parse has been called (always returning nil before).
 func (p *Parser) State(id Identifier) error {
 	err, exists := p.argState[id.argName()]
-	if !exists || err == ok {
+	if !exists || err == ok { // nolint: errorlint
 		return nil
 	}
 
@@ -250,6 +250,7 @@ func (p *Parser) AddKeyValue(kv IKeyValue, opts ...Option) *Parser {
 func (p *Parser) AddPipe(pipe IPipe, options ...Option) *Parser {
 	if err := p.Set.AddPipe(pipe, options...); err != nil {
 		p.vErr = multierror.Append(p.vErr, fmt.Errorf("%w: unable to add pipe", err))
+
 		return p
 	}
 	pipe.updateInput(p.Stdin)
@@ -270,11 +271,12 @@ func (p *Parser) Parse(argv ...string) {
 		zap.Int("shift", p.Shift),
 		zap.Strings("input", argv))
 
-	if argv == nil || len(argv) == 0 {
+	if len(argv) == 0 {
 		log.Debug("Using os.Args", zap.Strings("input", os.Args))
 		argv = os.Args[1+p.Shift:]
 	} else if len(argv) <= p.Shift && len(argv) > 0 {
 		p.pErr = fmt.Errorf("unable to parse, invalid number of arguments: got %d but want at least %d", len(argv), p.Shift)
+
 		return
 	}
 
@@ -325,6 +327,7 @@ func (p *Parser) Parse(argv ...string) {
 			log.Warn("Error during token scan", zap.Error(scanErr))
 			p.pErr = multierror.Append(p.pErr, scanErr)
 		}
+
 		log.Debug("Scanned", zap.Strings("tkns", tkns), zap.Strings("consumed", consumed), zap.Error(err))
 	}
 
@@ -353,6 +356,7 @@ func (p *Parser) Ok() *Parser {
 
 	if HandleError(p.Stderr, p.ErrorHandling, parserErr) {
 		_, _ = fmt.Fprintln(p.Stdout, parserErr)
+
 		if !p.SuppressUsage {
 			p.Usage()
 		}
@@ -378,7 +382,7 @@ func (p *Parser) Err() error {
 		return nil
 	}
 
-	switch err := p.pErr.(type) {
+	switch err := p.pErr.(type) { // nolint: errorlint
 	// make sure we don't return an empty non-nil multi error
 	case *multierror.Error:
 		if len(err.Errors) == 0 {
@@ -465,6 +469,7 @@ func (p *Parser) Usage() {
 		k := fmt.Sprintf("%d", pa.Index())
 
 		usage := pa.Usage()
+
 		if pa.IsRepeatable() {
 			k += " ..."
 			usage = fmt.Sprintf("(repeatable) %s", usage)
@@ -481,7 +486,9 @@ func (p *Parser) Usage() {
 		case IFlag:
 
 			n := "--" + a.Name()
+
 			var sh string
+
 			if a.Shorthand() != "" {
 				sh = fmt.Sprintf("[-%s]", a.Shorthand())
 			}
@@ -492,9 +499,11 @@ func (p *Parser) Usage() {
 
 			n := a.Name()
 			var sh string
+
 			if a.Shorthand() != "" {
 				sh = fmt.Sprintf("[%s]", a.Shorthand())
 			}
+
 			n = fmt.Sprintf("%-4s %s", sh, n)
 			dat.Keys[n] = a.Usage()
 
@@ -517,13 +526,15 @@ var (
 	ok       = errors.New("ok")
 )
 
-// scan some input for argument tokens (i.e. a positional argument, a key-value argument value or a flag argument value).
+// scan some input for argument tokens (i.e. a positional argument, a key-value argument value or a
+// flag argument value).
 //
-// Returns the tokens that were 'consumed' (successful or not), the remaining un-scanned tokens in the input and any errors
-// associated with scanning the 'consumed' tokens
+// Returns the tokens that were 'consumed' (successful or not), the remaining un-scanned tokens in
+// the input and any errors associated with scanning the 'consumed' tokens
 //
-// NOTE: will *not* recursively call itself, it will scan a single token (1 or 2 elements) and return - it is on the
-// caller to make repeated calls to scan to consume the entire input, which is when scan will return finished.
+// NOTE: will *not* recursively call itself, it will scan a single token (1 or 2 elements) and
+// return - it is on the caller to make repeated calls to scan to consume the entire input, which
+// is when scan will return finished.
 func (p *Parser) scan(input []string) (remaining, consumed []string, err error) {
 
 	if len(input) < 1 {
@@ -660,6 +671,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 					newInput = append(newInput, left...)
 
 					argValueDetected = true
+
 					return newInput, []string{this}, nil
 				} else {
 					return left, []string{token}, fmt.Errorf("%w: no such Flag", ErrUnidentified)
@@ -681,6 +693,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		// Otherwise, we know we need to consume (or try to) the next token to get the value for the flag
 		if fA.IsIndicator() {
 			log.Debug("Handling INDICATOR flag", zap.String("_t", fmt.Sprintf("%T", fA)))
+
 			switch indF := fA.(type) {
 			case *FlagArg[bool]:
 
@@ -740,7 +753,9 @@ func (p *Parser) parse() {
 	}
 
 	variadicIndex := -1
+
 	var variadicValues []string
+
 	for im1, v := range p.positionalValues {
 
 		pA := p.Pos(im1 + 1)
@@ -757,6 +772,7 @@ func (p *Parser) parse() {
 
 		if pA.IsRepeatable() {
 			variadicIndex = im1 + 1
+
 			variadicValues = append(variadicValues, v)
 		} else {
 			if err := pA.updateValue(v); err != nil {
@@ -772,6 +788,7 @@ func (p *Parser) parse() {
 	if variadicIndex > 0 {
 		variadicPosArg := p.Pos(variadicIndex)
 		log.Debug("Updating variadic positional arguments", zap.Strings("vals", variadicValues))
+
 		if err := variadicPosArg.updateValue(variadicValues...); err != nil {
 
 			p.updateState(variadicPosArg, err)
@@ -789,6 +806,7 @@ func (p *Parser) parse() {
 		// no need to log an error since this would have been noticed during the scan
 		if kvA == nil {
 			log.Warn("No such key-value argument to parse", zap.String("name", name), zap.Strings("values", vs))
+
 			continue
 		}
 
@@ -828,6 +846,7 @@ func (p *Parser) parse() {
 
 		if a.IsParsed() {
 			p.updateState(a, ok)
+
 			continue
 		}
 
@@ -912,6 +931,7 @@ func (p *Parser) Complete(cmd *complete.Command) {
 	for _, fl := range p.Flags() {
 		if fl.IsIndicator() {
 			cmd.Flags[fl.Name()] = predict.Nothing
+
 			continue
 		}
 		cmd.Flags[fl.Name()] = predict.Something
