@@ -67,12 +67,16 @@ func handleError(w io.Writer, eh ErrorHandling, e error) bool {
 }
 
 // New creates a new command-line argument Parser with ErrorHandling mode ContinueOnError.
+//
+// `elements` can be either concrete Arg implementations, or structs with Arg(s) defined via struct-tags, which
+// will be derived at runtime.
 func New(name string, elements ...any) (*Parser, error) {
 	p := NewParser(name, ContinueOnError).Using(elements...)
 
 	return p, p.Valid()
 }
 
+// Must
 func Must(name string, elements ...any) *Parser {
 	p, err := NewAt(name, ContinueOnError, elements...)
 

@@ -16,6 +16,9 @@ func NewTemplate() Template {
 		ParserPkgDefault: "github.com/runaek/clap/pkg/parse",
 		PkgUsage:         "The name of the go-package for the template.",
 		PkgDefault:       "derive",
+		PositionUsage:    "When specified, generate stubs for a PositionalDeriver.",
+		KeyValueUsage:    "When specified, generate stubs for a KeyValueDeriver.",
+		FlagUsage:        "When specified, generate stubs for a FlagDeriver.",
 	}
 }
 
@@ -27,6 +30,15 @@ type Template struct {
 	Name      string `cli:"!#1:string"`
 	NameUsage string
 
+	Position      bool `cli:"-pos|P:bool"`
+	PositionUsage string
+
+	KeyValue      bool `cli:"-key|K:bool"`
+	KeyValueUsage string
+
+	Flag      bool `cli:"-flag|F:bool"`
+	FlagUsage string
+
 	Title string
 
 	// DataType is the name of the data-types handled by the Deriver
@@ -34,7 +46,7 @@ type Template struct {
 	DataTypeUsage string
 
 	// Parser is the full name of the parse.Parse[T] implementation
-	Parser      string `cli:"!-parser|P:string"`
+	Parser      string `cli:"!-parser:string"`
 	ParserUsage string
 
 	// ParserPkg is the name of the package to be imported containing the Parser
@@ -59,6 +71,12 @@ func (dat Template) Process(out io.Writer) error {
 		return err
 	}
 
+	if !(dat.Flag || dat.Position || dat.KeyValue) {
+		dat.Flag = true
+		dat.Position = true
+		dat.KeyValue = true
+	}
+
 	return tpl.Execute(out, dat)
 }
 
@@ -79,6 +97,8 @@ const (
 
 type {{ .Name }}Deriver struct{}
 
+{{- if .KeyValue }}
+
 func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
 	v, ok := a.(*{{ .DataType  }})
 
@@ -88,6 +108,9 @@ func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option)
 
 	return clap.NewKeyValue[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
+{{- end -}}
+
+{{- if .Position }}
 
 func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
 	v, ok := a.(*{{ .DataType  }})
@@ -98,6 +121,9 @@ func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (c
 
 	return clap.NewPosition[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
+{{- end }}
+
+{{- if .Flag }}
 
 func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
 	v, ok := a.(*{{ .DataType  }})
@@ -108,11 +134,19 @@ func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (cl
 
 	return clap.NewFlag[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
+{{- end }}
 
 func init() {
+{{- if .Flag }}
 	clap.RegisterFlagDeriver("{{ .Name }}", {{ .Name }}Deriver{})
+{{- end }}
+
+{{- if .Position }}
 	clap.RegisterPositionalDeriver("{{ .Name }}", {{ .Name }}Deriver{})
+{{- end }}
+
+{{- if .KeyValue }}
 	clap.RegisterKeyValueDeriver("{{ .Name }}", {{ .Name }}Deriver{})
-}
-`
+{{- end }}
+}`
 )

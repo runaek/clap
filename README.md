@@ -1,7 +1,7 @@
 ![Tests (dev)](https://github.com/runaek/clap/workflows/test/badge.svg?branch=dev "Development")
 ![Tests](https://github.com/runaek/clap/workflows/test/badge.svg "Tests" )
 ---
-## Command-Line Argument Parser
+## Command-Line Argument Parser (In Development)
 
 `clap` is a command-line argument parser for Go. It loosely mimics/extends the API in the standard library package `flag`.
 The idea is that you can easily define/use different types of arguments in your program:
@@ -21,7 +21,6 @@ func main() {
     // do stuff with myArg
 }   
 ```
-
 
 ### Usage
 `go get -u github.com/runaek/clap` (requires go1.18+)

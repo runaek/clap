@@ -14,26 +14,6 @@ const (
 
 type indicatorDeriver struct{}
 
-func (_ indicatorDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
-	v, ok := a.(*parse.I)
-
-	if !ok {
-		return nil, fmt.Errorf("%w: want *parse.I but got %T", ErrIndicator, v)
-	}
-
-	return clap.NewKeyValue[parse.I](v, s, parse.Indicator{}, opts...), nil
-}
-
-func (_ indicatorDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
-	v, ok := a.(*parse.I)
-
-	if !ok {
-		return nil, fmt.Errorf("%w: want *parse.I but got %T", ErrIndicator, v)
-	}
-
-	return clap.NewPosition[parse.I](v, s, parse.Indicator{}, opts...), nil
-}
-
 func (_ indicatorDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
 	v, ok := a.(*parse.I)
 
@@ -46,6 +26,4 @@ func (_ indicatorDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap
 
 func init() {
 	clap.RegisterFlagDeriver("indicator", indicatorDeriver{})
-	clap.RegisterPositionalDeriver("indicator", indicatorDeriver{})
-	clap.RegisterKeyValueDeriver("indicator", indicatorDeriver{})
 }
