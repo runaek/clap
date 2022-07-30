@@ -6,29 +6,43 @@ import (
 	"github.com/runaek/clap/internal/derive"
 )
 
+const (
+	ErrDeriverNotFound Error = "deriver not found"
+)
+
+func notFound(t Type, deriver string) error {
+	return fmt.Errorf("%w (%s): %s", ErrDeriverNotFound, t, deriver)
+}
+
 // A PositionalDeriver is responsible for constructing a PositionalArg dynamically.
 type PositionalDeriver interface {
-	DerivePosition(any, int, ...Option) (IPositional, error)
+	DerivePosition(v any, index int, opts ...Option) (IPositional, error)
 }
 
 // A KeyValueDeriver is responsible for constructing a KeyValueArg dynamically.
 type KeyValueDeriver interface {
-	DeriveKeyValue(any, string, ...Option) (IKeyValue, error)
+	DeriveKeyValue(v any, name string, opts ...Option) (IKeyValue, error)
 }
 
 // A FlagDeriver is responsible for constructing a FlagArg dynamically.
 type FlagDeriver interface {
-	DeriveFlag(any, string, ...Option) (IFlag, error)
+	DeriveFlag(v any, name string, opts ...Option) (IFlag, error)
 }
 
+// RegisterPositionalDeriver adds a PositionalDeriver to the program so that it can be detected
+// and used within struct-tags.
 func RegisterPositionalDeriver(name string, d PositionalDeriver) {
 	positionalDerivers[name] = d
 }
 
+// RegisterKeyValueDeriver adds a KeyValueDeriver to the program so that it can be detected
+// and used within struct-tags.
 func RegisterKeyValueDeriver(name string, d KeyValueDeriver) {
 	keyValueDerivers[name] = d
 }
 
+// RegisterFlagDeriver adds a FlagDeriver to the program so that it can be detected
+// and used within struct-tags.
 func RegisterFlagDeriver(name string, d FlagDeriver) {
 	flagDerivers[name] = d
 }
@@ -108,7 +122,6 @@ func DeriveAll(sources ...any) ([]Arg, error) {
 	for _, s := range sources {
 		if a, ok := s.(Arg); ok {
 			out = append(out, a)
-
 			continue
 		}
 
@@ -166,7 +179,7 @@ func deriveArgs(src any) ([]Arg, error) {
 			deriver := getKVD(v.Deriver)
 
 			if deriver == nil {
-				return nil, fmt.Errorf("unable to derive: %s", v.Deriver)
+				return nil, notFound(KeyValueType, v.Deriver)
 			}
 
 			if a, err := deriver.DeriveKeyValue(v.Field(), v.Identifier, opts...); err != nil {
@@ -180,7 +193,7 @@ func deriveArgs(src any) ([]Arg, error) {
 			deriver := getPD(v.Deriver)
 
 			if deriver == nil {
-				return nil, fmt.Errorf("unable to derive: %s", v.Deriver)
+				return nil, notFound(PositionType, v.Deriver)
 			}
 
 			if a, err := deriver.DerivePosition(v.Field(), v.Pos(), opts...); err != nil {
@@ -193,7 +206,7 @@ func deriveArgs(src any) ([]Arg, error) {
 			deriver := getFD(v.Deriver)
 
 			if deriver == nil {
-				return nil, fmt.Errorf("unable to derive: %s", v.Deriver)
+				return nil, notFound(FlagType, v.Deriver)
 			}
 			if a, err := deriver.DeriveFlag(v.Field(), v.Identifier, opts...); err != nil {
 				return nil, fmt.Errorf("unable to derive flag argument: %w", err)
