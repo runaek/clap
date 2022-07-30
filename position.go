@@ -18,12 +18,14 @@ type IPositional interface {
 	mustEmbedPosition()
 }
 
+// NewPosition is a constructor for a positional argument at some index.
 func NewPosition[T any](variable *T, index int, parser parse.Parser[T], opts ...Option) *PositionalArg[T] {
 	return PositionUsingVariable[T](index, NewVariable[T](variable, parser), opts...)
 }
 
+// NewPositions is a constructor for a number of positional arguments starting from some index.
 func NewPositions[T any](variables *[]T, fromIndex int, parser parse.Parser[T], opts ...Option) *PositionalArg[[]T] {
-	return PositionsUsingVariable[T](fromIndex, NewVariable[[]T](variables, parse.SliceParser[T](parser)), opts...)
+	return PositionsUsingVariable[T](fromIndex, NewVariable[[]T](variables, parse.Slice[T](parser)), opts...)
 }
 
 func PositionUsingVariable[T any](index int, v Variable[T], opts ...Option) *PositionalArg[T] {

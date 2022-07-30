@@ -26,7 +26,7 @@ func NewKeyValue[T any](variable *T, name string, p parse.Parser[T], opts ...Opt
 
 // NewKeyValues is a constructor for a repeatable key-valued arguments from the command-line.
 //
-// Automatically converts the FuncTypeParser[T] into a FuncTypeParser[[]T] via SliceParser - use KeyValuesUsingVariable
+// Automatically converts the Func[T] into a Func[[]T] via parse.Slice - use KeyValuesUsingVariable
 // to be able to change this behaviour as required.
 func NewKeyValues[T any](variables *[]T, name string, p parse.Parser[T], opts ...Option) *KeyValueArg[[]T] {
 	v := NewVariables[T](variables, p)

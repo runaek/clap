@@ -27,7 +27,7 @@ func Help(helpRequested *bool, desc string) *FlagArg[bool] {
 		desc = "Display the help-text for a command or program."
 	}
 
-	fl := NewFlagP[bool](helpRequested, "help", "h", parse.Bool{}, WithUsage(desc), WithDefault("false"))
+	fl := NewFlagP[bool](helpRequested, "help", "h", parse.Bool{}, WithUsage(desc))
 	return fl
 }
 
@@ -44,7 +44,7 @@ func NewFlags[T any](val *[]T, name string, parser parse.Parser[T], options ...O
 
 // NewFlagsP is a constructor for a repeatable *FlagArg[[]T] with a shorthand.
 func NewFlagsP[T any](val *[]T, name string, shorthand string, parser parse.Parser[T], options ...Option) *FlagArg[[]T] {
-	f := NewFlagP[[]T](val, name, shorthand, parse.SliceParser[T](parser), options...)
+	f := NewFlagP[[]T](val, name, shorthand, parse.Slice[T](parser), options...)
 	f.repeatable = true
 	return f
 }

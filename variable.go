@@ -28,7 +28,7 @@ type FileReader interface {
 
 // A Variable refers to some program variable that can be parsed from string input.
 //
-// Internally, a Variable uses a FuncTypeParser to parse some string input into the underlying variable.
+// Internally, a Variable uses a Func to parse some string input into the underlying variable.
 type Variable[T any] interface {
 	// Update parses the given input and attempts to update the underlying variable
 	Update(...string) error
@@ -36,15 +36,15 @@ type Variable[T any] interface {
 	Ref() *T
 	// Unwrap returns the value of the underlying variable
 	Unwrap() T
-	// Parser returns the FuncTypeParser for the variable
+	// Parser returns the Func for the variable
 	Parser() parse.Parser[T]
 }
 
 // NewVariables is a constructor for a Variable that has an underlying argumentVariable of slice-type.
 //
-// This is a helper function which converts the supplied FuncTypeParser into one that supports slices via SliceParser.
+// This is a helper function which converts the supplied Func into one that supports slices via Slice.
 //
-// A specific FuncTypeParser can be used by creating a Variable using NewVariablesWithParser.
+// A specific Func can be used by creating a Variable using NewVariablesWithParser.
 func NewVariables[T any](variables *[]T, p parse.Parser[T]) Variable[[]T] {
 	if variables == nil {
 		var anon []T
@@ -52,11 +52,11 @@ func NewVariables[T any](variables *[]T, p parse.Parser[T]) Variable[[]T] {
 	}
 	return &argumentVariable[[]T]{
 		v: variables,
-		p: parse.SliceParser(p),
+		p: parse.Slice(p),
 	}
 }
 
-// NewVariablesWithParser is a constructor for a Variable that has an underlying FuncTypeParser of slice-type.
+// NewVariablesWithParser is a constructor for a Variable that has an underlying Func of slice-type.
 func NewVariablesWithParser[T any](variables *[]T, p parse.Parser[[]T]) Variable[[]T] {
 	return &argumentVariable[[]T]{
 		v: variables,

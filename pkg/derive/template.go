@@ -80,7 +80,7 @@ const (
 
 type {{ .Name }}Deriver struct {}
 
-func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) { // nolint: ireturn
+func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
 	
 	v, ok := a.(*{{ .DataType  }})
 	
@@ -91,7 +91,7 @@ func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option)
 	return clap.NewKeyValue[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil 
 }
 
-func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) { // nolint: ireturn
+func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
 	
 	v, ok := a.(*{{ .DataType  }})
 	
@@ -102,7 +102,7 @@ func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (c
 	return clap.NewPosition[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil 
 }
 
-func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) { // nolint: ireturn
+func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
 	
 	v, ok := a.(*{{ .DataType  }})
 	

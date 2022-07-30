@@ -26,7 +26,7 @@ func main() {
 	if output == "" {
 		out = os.Stdout
 	} else {
-		f, err := os.OpenFile(output, os.O_CREATE|os.O_RDWR, os.ModePerm)
+		f, err := os.OpenFile(output, os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.ModePerm)
 
 		if err != nil {
 			panic(err)
