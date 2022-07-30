@@ -21,7 +21,7 @@ func (_ boolDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.
 		return nil, fmt.Errorf("%w: want *bool but got %T", ErrBool, v)
 	}
 
-	return clap.NewKeyValue[bool](v, s, parse.Bool{}, opts...), nil 
+	return clap.NewKeyValue[bool](v, s, parse.Bool{}, opts...), nil
 }
 
 func (_ boolDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
@@ -31,7 +31,7 @@ func (_ boolDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPo
 		return nil, fmt.Errorf("%w: want *bool but got %T", ErrBool, v)
 	}
 
-	return clap.NewPosition[bool](v, s, parse.Bool{}, opts...), nil 
+	return clap.NewPosition[bool](v, s, parse.Bool{}, opts...), nil
 }
 
 func (_ boolDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
@@ -41,7 +41,7 @@ func (_ boolDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFla
 		return nil, fmt.Errorf("%w: want *bool but got %T", ErrBool, v)
 	}
 
-	return clap.NewFlag[bool](v, s, parse.Bool{}, opts...), nil 
+	return clap.NewFlag[bool](v, s, parse.Bool{}, opts...), nil
 }
 
 func init() {

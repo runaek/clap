@@ -86,7 +86,7 @@ func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option)
 		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
 	}
 
-	return clap.NewKeyValue[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil 
+	return clap.NewKeyValue[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
 
 func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
@@ -96,7 +96,7 @@ func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (c
 		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
 	}
 
-	return clap.NewPosition[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil 
+	return clap.NewPosition[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
 
 func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
@@ -106,7 +106,7 @@ func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (cl
 		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
 	}
 
-	return clap.NewFlag[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil 
+	return clap.NewFlag[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
 
 func init() {

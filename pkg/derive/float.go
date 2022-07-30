@@ -21,7 +21,7 @@ func (_ floatDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap
 		return nil, fmt.Errorf("%w: want *float64 but got %T", ErrFloat, v)
 	}
 
-	return clap.NewKeyValue[float64](v, s, parse.Float64{}, opts...), nil 
+	return clap.NewKeyValue[float64](v, s, parse.Float64{}, opts...), nil
 }
 
 func (_ floatDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
@@ -31,7 +31,7 @@ func (_ floatDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IP
 		return nil, fmt.Errorf("%w: want *float64 but got %T", ErrFloat, v)
 	}
 
-	return clap.NewPosition[float64](v, s, parse.Float64{}, opts...), nil 
+	return clap.NewPosition[float64](v, s, parse.Float64{}, opts...), nil
 }
 
 func (_ floatDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
@@ -41,7 +41,7 @@ func (_ floatDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFl
 		return nil, fmt.Errorf("%w: want *float64 but got %T", ErrFloat, v)
 	}
 
-	return clap.NewFlag[float64](v, s, parse.Float64{}, opts...), nil 
+	return clap.NewFlag[float64](v, s, parse.Float64{}, opts...), nil
 }
 
 func init() {

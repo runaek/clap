@@ -21,7 +21,7 @@ func (_ indicatorDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (
 		return nil, fmt.Errorf("%w: want *parse.I but got %T", ErrIndicator, v)
 	}
 
-	return clap.NewKeyValue[parse.I](v, s, parse.Indicator{}, opts...), nil 
+	return clap.NewKeyValue[parse.I](v, s, parse.Indicator{}, opts...), nil
 }
 
 func (_ indicatorDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
@@ -31,7 +31,7 @@ func (_ indicatorDeriver) DerivePosition(a any, s int, opts ...clap.Option) (cla
 		return nil, fmt.Errorf("%w: want *parse.I but got %T", ErrIndicator, v)
 	}
 
-	return clap.NewPosition[parse.I](v, s, parse.Indicator{}, opts...), nil 
+	return clap.NewPosition[parse.I](v, s, parse.Indicator{}, opts...), nil
 }
 
 func (_ indicatorDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
@@ -41,7 +41,7 @@ func (_ indicatorDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap
 		return nil, fmt.Errorf("%w: want *parse.I but got %T", ErrIndicator, v)
 	}
 
-	return clap.NewFlag[parse.I](v, s, parse.Indicator{}, opts...), nil 
+	return clap.NewFlag[parse.I](v, s, parse.Indicator{}, opts...), nil
 }
 
 func init() {
