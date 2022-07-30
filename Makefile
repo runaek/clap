@@ -19,4 +19,4 @@ testc:
 	go test -json -tags clap_mocks ./... -covermode=atomic -coverprofile test.cov
 
 lint:
-	golangci-lint run
+	go fmt ./... && golangci-lint run

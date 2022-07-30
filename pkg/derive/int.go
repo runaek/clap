@@ -20,27 +20,27 @@ func (_ intDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.I
 	if !ok {
 		return nil, fmt.Errorf("%w: want *int but got %T", ErrInt, v)
 	}
-	
+
 	return clap.NewKeyValue[int](v, s, parse.Int{}, opts...), nil 
 }
 
 func (_ intDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
 	v, ok := a.(*int)
-	
+
 	if !ok {
 		return nil, fmt.Errorf("%w: want *int but got %T", ErrInt, v)
 	}
-	
+
 	return clap.NewPosition[int](v, s, parse.Int{}, opts...), nil 
 }
 
 func (_ intDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
 	v, ok := a.(*int)
-	
+
 	if !ok {
 		return nil, fmt.Errorf("%w: want *int but got %T", ErrInt, v)
 	}
-	
+
 	return clap.NewFlag[int](v, s, parse.Int{}, opts...), nil 
 }
 

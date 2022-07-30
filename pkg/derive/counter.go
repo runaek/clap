@@ -20,27 +20,27 @@ func (_ counterDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (cl
 	if !ok {
 		return nil, fmt.Errorf("%w: want *parse.C but got %T", ErrCounter, v)
 	}
-	
+
 	return clap.NewKeyValue[parse.C](v, s, parse.Counter{}, opts...), nil 
 }
 
 func (_ counterDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
 	v, ok := a.(*parse.C)
-	
+
 	if !ok {
 		return nil, fmt.Errorf("%w: want *parse.C but got %T", ErrCounter, v)
 	}
-	
+
 	return clap.NewPosition[parse.C](v, s, parse.Counter{}, opts...), nil 
 }
 
 func (_ counterDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
 	v, ok := a.(*parse.C)
-	
+
 	if !ok {
 		return nil, fmt.Errorf("%w: want *parse.C but got %T", ErrCounter, v)
 	}
-	
+
 	return clap.NewFlag[parse.C](v, s, parse.Counter{}, opts...), nil 
 }
 

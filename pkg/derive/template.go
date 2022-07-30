@@ -85,27 +85,27 @@ func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option)
 	if !ok {
 		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
 	}
-	
+
 	return clap.NewKeyValue[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil 
 }
 
 func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
 	v, ok := a.(*{{ .DataType  }})
-	
+
 	if !ok {
 		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
 	}
-	
+
 	return clap.NewPosition[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil 
 }
 
 func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
 	v, ok := a.(*{{ .DataType  }})
-	
+
 	if !ok {
 		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
 	}
-	
+
 	return clap.NewFlag[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil 
 }
 

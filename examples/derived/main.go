@@ -45,5 +45,4 @@ func main() {
 	parser.Ok()
 
 	fmt.Printf("MyProgram Arguments:\n%+v\n", prog)
-
 }

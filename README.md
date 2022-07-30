@@ -5,6 +5,7 @@
 
 `clap` is a command-line argument parser for Go. It loosely mimics/extends the API in the standard library package `flag`.
 The idea is that you can easily define/use different types of arguments in your program:
+
 ```go
 var (
     myString string
@@ -17,23 +18,32 @@ var (
 func main() {
     parser.Parse(nil)
     parser.Ok()
-    
     // do stuff with myArg
 }   
 ```
 
 
 ### Usage
-`go get -u github.com/runaek/clap` (requires go1.18)
+`go get -u github.com/runaek/clap` (requires go1.18+)
 
 ### Features
 
 * Supports key-value `KeyValueArg`, flag `FlagArg`, positional `PositionalArg` and pipe `PipeArg` arguments as input;
-* Easily extensible 'parser' for `Arg(s)` supporting user-defined types;
+* Supports extensions to user-defined types;
 * Auto-generate `Arg(s)` based on struct-definitions;
-* Capability to
 
-### Arguments derived from struct-tags
+### Examples
+
+#### Arguments derived from struct-tags
+
+Struct-tags can be supplied in the following formats: 
+
+    > `cli:"#<index>:<deriver>"` for a positional argument
+    > `cli:"#<start>...:<deriver>"` for positional arguments
+    > `cli:"-<flag_name>|<flag_shorthand>:<deriver>"` for a flag argument
+    > `cli:"@<key_name>|<key_shorthand>:<deriver>"` for a key-value argument
+
+A `!` can be prefixed to tags to mark the input as `Required` (this will not apply to variable positional arguments).
 
 ```go
 // examples/derive/main.go 
@@ -79,11 +89,10 @@ var (
 )
 
 func main() {
-
-	parser.Parse(nil)
+	parser.Parse()
 	parser.Ok()
 
 	fmt.Printf("MyProgram Arguments:\n%+v\n", prog)
-
 }
+
 ```
