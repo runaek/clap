@@ -85,7 +85,6 @@ type argumentVariable[T any] struct {
 }
 
 func (b *argumentVariable[T]) Update(ss ...string) error {
-
 	v, err := b.p.Parse(ss...)
 
 	if err != nil {

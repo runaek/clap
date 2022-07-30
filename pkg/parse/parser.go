@@ -18,7 +18,6 @@ func (fn Func[T]) Parse(input ...string) (T, error) {
 // Return type is a Func[[]T].
 func Slice[T any](p Parser[T]) Parser[[]T] {
 	return Func[[]T](func(input ...string) ([]T, error) {
-
 		out := make([]T, len(input))
 
 		for i, in := range input {

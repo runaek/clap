@@ -39,7 +39,6 @@ func main() {
 	if err := tpl.Process(out); err != nil {
 		panic(err)
 	}
-
 }
 
 const (

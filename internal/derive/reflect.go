@@ -44,7 +44,6 @@ func (p *Program) Args() []*Argument {
 	out := make([]*Argument, len(p.order))
 
 	for i, name := range p.order {
-
 		a := p.arguments[name]
 
 		if d, ok := p.descriptions[name]; ok {
@@ -63,7 +62,6 @@ func (p *Program) Args() []*Argument {
 
 // Decode some input type and attempt to derive a number of *Argument from struct-tags and fields.
 func (p *Program) Decode(input any) error {
-
 	if p.arguments == nil {
 		p.arguments = map[string]*Argument{}
 	}
@@ -90,7 +88,6 @@ func (p *Program) Decode(input any) error {
 
 	result := &multierror.Error{
 		ErrorFormat: func(es []error) string {
-
 			msgs := make([]string, len(es)+1)
 			msgs[0] = fmt.Sprintf("%d error(s) occurred deriving arguments:", len(es))
 
@@ -103,7 +100,6 @@ func (p *Program) Decode(input any) error {
 	}
 
 	for i := 0; i < strukt.NumField(); i++ {
-
 		fieldType := strukt.Type().Field(i)
 
 		if !fieldType.IsExported() {
@@ -124,7 +120,6 @@ func (p *Program) Decode(input any) error {
 
 		p.arguments[arg.Name] = arg
 		p.order = append(p.order, arg.Name)
-
 	}
 
 	for k, v := range p.descriptions {
@@ -147,7 +142,6 @@ func (p *Program) Decode(input any) error {
 //
 // It returns the cleaned name, and true if it is a reference, otherwise false and name is returned
 func isReference(name string) (string, bool) {
-
 	isRef := true
 	if strings.HasSuffix(name, nameUsage) {
 		name = strings.TrimSuffix(name, nameUsage)
@@ -163,7 +157,6 @@ func isReference(name string) (string, bool) {
 
 // parseArgument
 func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Argument, error) {
-
 	name := sf.Name
 
 	if cleaned, isRef := isReference(name); isRef {
@@ -196,7 +189,6 @@ func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Arg
 	default:
 
 		if t == "" {
-
 			return nil, nil
 		}
 
@@ -209,7 +201,6 @@ func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Arg
 		}
 
 		switch val.Kind() {
-
 		case reflect.Pointer:
 
 			elem := val.Elem()
@@ -222,9 +213,7 @@ func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Arg
 				return nil, fmt.Errorf("unable to 'Address' Field Value (%s)", sf.Name)
 			}
 		}
-
 	}
-
 	return arg, nil
 }
 
@@ -232,9 +221,7 @@ func (p *Program) parseArgument(sf reflect.StructField, val reflect.Value) (*Arg
 //
 // It returns nil if no *Argument is defined by the struct-field.
 func newArgument(sf reflect.StructField) (*Argument, error) {
-
 	if !sf.IsExported() {
-
 		return nil, nil
 	}
 
@@ -247,7 +234,6 @@ func newArgument(sf reflect.StructField) (*Argument, error) {
 	if isRef {
 		name = cleanedName
 	} else if tag == "" {
-
 		return nil, nil
 	}
 
@@ -314,11 +300,8 @@ func newArgument(sf reflect.StructField) (*Argument, error) {
 			out.IndexFrom = int(p)
 			out.Identifier = fmt.Sprintf("%d", out.IndexFrom)
 			out.Repeatable = true
-
 		} else {
-
 			p, err := strconv.ParseInt(ident, 10, 64)
-
 			if err != nil || p < 1 {
 				return nil, fmt.Errorf("invalid Index for Positional Arg: %s - %w", ident, err)
 			}

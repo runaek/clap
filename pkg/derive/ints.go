@@ -15,7 +15,6 @@ const (
 type intsDeriver struct {}
 
 func (_ intsDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
-	
 	v, ok := a.(*[]int)
 	
 	if !ok {
@@ -26,7 +25,6 @@ func (_ intsDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.
 }
 
 func (_ intsDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
-	
 	v, ok := a.(*[]int)
 	
 	if !ok {
@@ -37,7 +35,6 @@ func (_ intsDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPo
 }
 
 func (_ intsDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
-	
 	v, ok := a.(*[]int)
 	
 	if !ok {

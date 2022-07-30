@@ -15,7 +15,6 @@ const (
 type floatDeriver struct {}
 
 func (_ floatDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
-	
 	v, ok := a.(*float64)
 	
 	if !ok {
@@ -26,7 +25,6 @@ func (_ floatDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap
 }
 
 func (_ floatDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
-	
 	v, ok := a.(*float64)
 	
 	if !ok {
@@ -37,7 +35,6 @@ func (_ floatDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IP
 }
 
 func (_ floatDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
-	
 	v, ok := a.(*float64)
 	
 	if !ok {

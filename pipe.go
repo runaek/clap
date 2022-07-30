@@ -150,7 +150,6 @@ func (p *PipeArg[T]) IsParsed() bool {
 
 // IsSupplied checks if a pipe has been supplied & data has been written to the pipe.
 func (p *PipeArg[T]) IsSupplied() (cond bool) {
-
 	if p.supplied != nil {
 		return *p.supplied
 	}
@@ -208,7 +207,6 @@ func (p *PipeArg[T]) updateMetadata(options ...Option) {
 }
 
 func (p *PipeArg[T]) updateValue(_ ...string) error {
-
 	if p.parsed {
 		return nil
 	}

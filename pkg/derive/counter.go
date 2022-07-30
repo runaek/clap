@@ -15,7 +15,6 @@ const (
 type counterDeriver struct {}
 
 func (_ counterDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
-	
 	v, ok := a.(*parse.C)
 	
 	if !ok {
@@ -26,7 +25,6 @@ func (_ counterDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (cl
 }
 
 func (_ counterDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
-	
 	v, ok := a.(*parse.C)
 	
 	if !ok {
@@ -37,7 +35,6 @@ func (_ counterDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.
 }
 
 func (_ counterDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
-	
 	v, ok := a.(*parse.C)
 	
 	if !ok {

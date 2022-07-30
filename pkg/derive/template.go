@@ -49,7 +49,6 @@ type Template struct {
 }
 
 func (dat Template) Process(out io.Writer) error {
-
 	if len(dat.Name) > 1 {
 		dat.Title = fmt.Sprintf("%s%s", strings.ToTitle(dat.Name[:1]), dat.Name[1:])
 	}
@@ -81,7 +80,6 @@ const (
 type {{ .Name }}Deriver struct {}
 
 func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
-	
 	v, ok := a.(*{{ .DataType  }})
 	
 	if !ok {
@@ -92,7 +90,6 @@ func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option)
 }
 
 func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
-	
 	v, ok := a.(*{{ .DataType  }})
 	
 	if !ok {
@@ -103,7 +100,6 @@ func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (c
 }
 
 func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
-	
 	v, ok := a.(*{{ .DataType  }})
 	
 	if !ok {

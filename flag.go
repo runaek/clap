@@ -22,7 +22,6 @@ type IFlag interface {
 
 // Help is a constructor for some *FlagArg[bool] (identified by '--help'/'-h') type.
 func Help(helpRequested *bool, desc string) *FlagArg[bool] {
-
 	if desc == "" {
 		desc = "Display the help-text for a command or program."
 	}
@@ -39,7 +38,6 @@ func NewFlag[T any](val *T, name string, parser parse.Parser[T], opts ...Option)
 // NewFlags is a constructor for a repeatable *FlagArg[[]T].
 func NewFlags[T any](val *[]T, name string, parser parse.Parser[T], options ...Option) *FlagArg[[]T] {
 	return FlagsUsingVariable[T](name, NewVariables[T](val, parser), options...)
-
 }
 
 // NewFlagsP is a constructor for a repeatable *FlagArg[[]T] with a shorthand.
@@ -184,7 +182,6 @@ func (f *FlagArg[T]) HasDefault() bool {
 }
 
 func (f *FlagArg[T]) updateValue(s ...string) (err error) {
-
 	v := f.Variable()
 
 	log.Debug("Updating FlagArg argument value",

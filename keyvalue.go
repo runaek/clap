@@ -153,7 +153,6 @@ func (k *KeyValueArg[T]) updateMetadata(opts ...Option) {
 }
 
 func (k *KeyValueArg[T]) updateValue(s ...string) (err error) {
-
 	v := k.Variable()
 
 	log.Debug("Updating Key Value argument value",

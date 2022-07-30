@@ -38,7 +38,6 @@ func (_ Strings) Parse(input ...string) ([]string, error) {
 type Int struct{}
 
 func (_ Int) Parse(in ...string) (int, error) {
-
 	if len(in) == 0 {
 		return 0, ErrEmptyInput
 	}
@@ -62,7 +61,6 @@ func (_ Ints) Parse(input ...string) ([]int, error) {
 	ip := Int{}
 
 	for i, in := range input {
-
 		if iv, err := ip.Parse(in); err != nil {
 			res = multierror.Append(res, err)
 		} else {
@@ -110,4 +108,3 @@ func (i Indicator) Parse(input ...string) (I, error) {
 	}
 	return I(!active), nil
 }
-

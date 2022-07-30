@@ -157,7 +157,6 @@ func (p *PositionalArg[T]) updateMetadata(opts ...Option) {
 }
 
 func (p *PositionalArg[T]) updateValue(inputs ...string) (err error) {
-
 	v := p.Variable()
 
 	log.Debug("Updating PositionalArg",
@@ -170,16 +169,13 @@ func (p *PositionalArg[T]) updateValue(inputs ...string) (err error) {
 	if p.parsed {
 		return nil
 	}
-
 	defer func() {
-
 		if len(inputs) > 0 {
 			p.supplied = true
 		}
 
 		if err == nil {
 			p.parsed = true
-
 		} else {
 			log.Debug("Error updating Positional argument value",
 				zap.String("pos_index", p.Name()),

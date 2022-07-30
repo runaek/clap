@@ -106,7 +106,6 @@ func DeriveAll(sources ...any) ([]Arg, error) {
 	out := make([]Arg, 0, len(sources))
 
 	for _, s := range sources {
-
 		if a, ok := s.(Arg); ok {
 			out = append(out, a)
 
@@ -120,7 +119,6 @@ func DeriveAll(sources ...any) ([]Arg, error) {
 		}
 
 		out = append(out, more...)
-
 	}
 
 	return out, nil
@@ -135,17 +133,15 @@ var (
 // deriveArgs is a helper function for reading and creating Arg implementations using struct-tags and
 // FlagDeriver, KeyValueDeriver and PositionalDeriver implementations that have been registered.
 func deriveArgs(src any) ([]Arg, error) {
-
 	program, err := derive.Parse(src)
 
 	if err != nil {
 		return nil, err
 	}
+	args := program.Args()
+	out := make([]Arg, len(args))
 
-	var out []Arg
-
-	for _, v := range program.Args() {
-
+	for i, v := range args {
 		opts := []Option{
 			WithUsage(v.Usage),
 		}
@@ -212,7 +208,7 @@ func deriveArgs(src any) ([]Arg, error) {
 			return nil, errors.New("an error occurred deriving an Argument")
 		}
 
-		out = append(out, arg)
+		out[i] = arg
 	}
 
 	return out, nil

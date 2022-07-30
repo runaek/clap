@@ -15,7 +15,6 @@ const (
 type indicatorDeriver struct {}
 
 func (_ indicatorDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
-	
 	v, ok := a.(*parse.I)
 	
 	if !ok {
@@ -26,7 +25,6 @@ func (_ indicatorDeriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (
 }
 
 func (_ indicatorDeriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
-	
 	v, ok := a.(*parse.I)
 	
 	if !ok {
@@ -37,7 +35,6 @@ func (_ indicatorDeriver) DerivePosition(a any, s int, opts ...clap.Option) (cla
 }
 
 func (_ indicatorDeriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
-	
 	v, ok := a.(*parse.I)
 	
 	if !ok {

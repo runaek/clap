@@ -142,7 +142,6 @@ func ValueOf[T any](arg Arg) (T, error) {
 
 // ReferenceTo is a helper function for retrieving a reference to the value for an Arg.
 func ReferenceTo[T any](arg Arg) (*T, error) {
-
 	if arg == nil {
 		return nil, errors.New("nil reference")
 	}
@@ -182,7 +181,6 @@ func UpdateMetadata(u Updater, options ...Option) {
 type argName string
 
 func (id argName) Type() Type {
-
 	parts := strings.SplitN(string(id), ":", 2)
 
 	switch strings.ToLower(parts[0]) {
@@ -214,7 +212,6 @@ func (id argName) argName() argName {
 // ValidateDefaultValue is a helper function for retrieving and attempting to parse the actual typed default value
 // of an Arg.
 func ValidateDefaultValue[T any](arg TypedArg[T]) (T, error) {
-
 	var zero T
 	switch a := arg.(type) {
 	case IFlag:
