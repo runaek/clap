@@ -13,6 +13,7 @@ const (
 	ErrPipeExists   Error = "pipe already exists"
 	ErrUnknownType  Error = "unrecognised argument type"
 	ErrInvalid      Error = "invalid argument syntax"
+	ErrHelp         Error = "help requested"
 )
 
 // Error is a simple indicator for some error that occurs.
@@ -26,8 +27,7 @@ func (err Error) Error() string {
 }
 
 func (err Error) Is(target error) bool {
-
-	parseErr, ok := target.(Error)
+	parseErr, ok := target.(Error) // nolint: errorlint
 
 	if !ok {
 		return false
@@ -78,5 +78,6 @@ func (err *ParseError) Unwrap() error {
 
 func (err *ParseError) Error() string {
 	a := err.Id.argName()
+
 	return fmt.Sprintf("error parsing (%s) %q): %s", a.Type(), a.Name(), err.Cause)
 }

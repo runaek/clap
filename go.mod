@@ -3,6 +3,7 @@ module github.com/runaek/clap
 go 1.18
 
 require (
+	github.com/golang/mock v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/posener/complete/v2 v2.0.1-alpha.13
 	go.uber.org/zap v1.21.0
@@ -10,7 +11,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/script v1.1.5 // indirect

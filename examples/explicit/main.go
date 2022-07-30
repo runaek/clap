@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"github.com/runaek/clap"
 	"github.com/runaek/clap/pkg/parse"
-	"os"
 )
 
 var (
-	parser = clap.New("demo").
+	parser = clap.Must("demo").
 		Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe)
 )
 
 func main() {
-	parser.Parse(os.Args[1:])
+	parser.Parse()
 	parser.Ok()
 
 	fmt.Printf("Name:    %s\n", name)
@@ -24,8 +23,6 @@ func main() {
 	fmt.Printf("CSVArgs: %s\n", csvArgs)
 	fmt.Printf("Counter: %d\n", counter)
 	fmt.Printf("Id:      %s\n", ident)
-
-	clap.Ok()
 }
 
 var (
