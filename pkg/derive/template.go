@@ -148,5 +148,6 @@ func init() {
 {{- if .KeyValue }}
 	clap.RegisterKeyValueDeriver("{{ .Name }}", {{ .Name }}Deriver{})
 {{- end }}
-}`
+}
+`
 )
