@@ -10,7 +10,7 @@ import (
 func NewTemplate() Template {
 	return Template{
 		NameUsage:        "Name of the Deriver.",
-		ParserUsage:      "The parse.Parse[T] implementation to be used.",
+		ParserUsage:      "The parse.Parse[T] implementation to be used. This should contain the name of the package.",
 		DataTypeUsage:    "Go data-type to be handled by the Deriver.",
 		ParserPkgUsage:   "The go-package containing the parse.Parse[T] implementation.",
 		ParserPkgDefault: "github.com/runaek/clap/pkg/parse",
@@ -19,6 +19,7 @@ func NewTemplate() Template {
 		PositionUsage:    "When specified, generate stubs for a PositionalDeriver.",
 		KeyValueUsage:    "When specified, generate stubs for a KeyValueDeriver.",
 		FlagUsage:        "When specified, generate stubs for a FlagDeriver.",
+		SliceUsage:       "When specified, the underlying Arg will be constructed with a []T.",
 	}
 }
 
@@ -27,7 +28,7 @@ func NewTemplate() Template {
 // This can be used to generate code for a Deriver implementation and register it for use.
 type Template struct {
 	// Name of the Deriver
-	Name      string `cli:"!#1:string"`
+	Name      string `cli:"!#1|name:string"`
 	NameUsage string
 
 	Position      bool `cli:"-pos|P:bool"`
@@ -39,10 +40,13 @@ type Template struct {
 	Flag      bool `cli:"-flag|F:bool"`
 	FlagUsage string
 
+	Slice      bool `cli:"-slice:bool"`
+	SliceUsage string
+
 	Title string
 
 	// DataType is the name of the data-types handled by the Deriver
-	DataType      string `cli:"!#2:string"`
+	DataType      string `cli:"!#2|type:string"`
 	DataTypeUsage string
 
 	// Parser is the full name of the parse.Parse[T] implementation
@@ -100,39 +104,39 @@ type {{ .Name }}Deriver struct{}
 {{- if .KeyValue }}
 
 func (_ {{ .Name }}Deriver) DeriveKeyValue(a any, s string, opts ...clap.Option) (clap.IKeyValue, error) {
-	v, ok := a.(*{{ .DataType  }})
+	v, ok := a.(*{{if .Slice}}[]{{ end }}{{ .DataType  }})
 
 	if !ok {
-		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
+		return nil, fmt.Errorf("%w: want *{{if .Slice}}[]{{ end }}{{ .DataType  }} but got %T", Err{{ .Title }}, v)
 	}
 
-	return clap.NewKeyValue[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
+	return clap.NewKeyValue{{if .Slice}}s{{ end }}[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
 {{- end -}}
 
 {{- if .Position }}
 
 func (_ {{ .Name }}Deriver) DerivePosition(a any, s int, opts ...clap.Option) (clap.IPositional, error) {
-	v, ok := a.(*{{ .DataType  }})
+	v, ok := a.(*{{if .Slice}}[]{{ end }}{{ .DataType  }})
 
 	if !ok {
-		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
+		return nil, fmt.Errorf("%w: want *{{if .Slice}}[]{{ end }}{{ .DataType  }} but got %T", Err{{ .Title }}, v)
 	}
 
-	return clap.NewPosition[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
+	return clap.NewPosition{{if .Slice}}s{{ end }}[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
 {{- end }}
 
 {{- if .Flag }}
 
 func (_ {{ .Name }}Deriver) DeriveFlag(a any, s string, opts ...clap.Option) (clap.IFlag, error) {
-	v, ok := a.(*{{ .DataType  }})
+	v, ok := a.(*{{if .Slice}}[]{{ end }}{{ .DataType  }})
 
 	if !ok {
-		return nil, fmt.Errorf("%w: want *{{ .DataType }} but got %T", Err{{ .Title }}, v)
+		return nil, fmt.Errorf("%w: want *{{if .Slice}}[]{{ end }}{{ .DataType  }} but got %T", Err{{ .Title }}, v)
 	}
 
-	return clap.NewFlag[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
+	return clap.NewFlag{{if .Slice}}s{{ end }}[{{ .DataType }}](v, s, {{ .Parser }}{}, opts...), nil
 }
 {{- end }}
 

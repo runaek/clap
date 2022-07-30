@@ -275,18 +275,17 @@ func newArgument(sf reflect.StructField) (*Argument, error) {
 
 	ident, deriver := elements[0], elements[1]
 
+	identItems := strings.Split(ident, "|")
+
+	if len(identItems) > 2 {
+		return nil, fmt.Errorf("invalid Tag syntax (identifier) at struct-field: %q - %s", name, tag)
+	} else if len(identItems) == 2 {
+		ident = identItems[0]
+		out.Alias = identItems[1]
+	}
+
 	switch out.Type {
 	case FlagType, KeyType:
-
-		identItems := strings.Split(ident, "|")
-
-		if len(identItems) > 2 {
-			return nil, fmt.Errorf("invalid Tag syntax (identifier) at struct-field: %q - %s", name, tag)
-		} else if len(identItems) == 2 {
-			ident = identItems[0]
-			out.Alias = identItems[1]
-		}
-
 		out.Identifier = ident
 	case PosType:
 

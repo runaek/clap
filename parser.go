@@ -44,17 +44,19 @@ func handleError(w io.Writer, eh ErrorHandling, e error) bool {
 		}
 	}
 
+	isHelp := errors.Is(e, ErrHelp)
+
 	switch eh {
 	case ContinueOnError:
-		if e == ErrHelp {
+		if isHelp {
 			return false
 		}
 	case PanicOnError:
-		if e != ErrHelp {
+		if !isHelp {
 			panic(e)
 		}
 	case ExitOnError:
-		if e != ErrHelp {
+		if !isHelp {
 			_, _ = fmt.Fprint(w, e)
 			os.Exit(1)
 		}
@@ -71,12 +73,10 @@ func handleError(w io.Writer, eh ErrorHandling, e error) bool {
 // `elements` can be either concrete Arg implementations, or structs with Arg(s) defined via struct-tags, which
 // will be derived at runtime.
 func New(name string, elements ...any) (*Parser, error) {
-	p := NewParser(name, ContinueOnError).Using(elements...)
-
-	return p, p.Valid()
+	return NewAt(name, ContinueOnError, elements...)
 }
 
-// Must
+// Must is a constructor for a *Parser that panics if any error occurs.
 func Must(name string, elements ...any) *Parser {
 	p, err := NewAt(name, ContinueOnError, elements...)
 
@@ -435,16 +435,20 @@ ARGUMENTS
 {{- if .Keys }}
 
 OPTIONS (<key>=<value>)
-{{- range $name, $desc := .Keys }}
-	{{ printf "%-24s : %s" $name $desc }} 
+{{- range $name, $descs := .Keys }}
+{{- range $ind, $desc := $descs }}
+	{{ if eq $ind 0 -}}{{ printf "%-24s : %s" $name $desc }}{{ else }}{{ printf "%-24s  %s" "" $desc }}{{- end -}}
+{{ end }}
 {{- end -}}
 {{- end }}
 
 {{- if .Flags }}
 
 FLAGS
-{{- range $name, $desc := .Flags }}
-	{{ printf "%-24s : %s" $name $desc }} 
+{{- range $name, $descs := .Flags }}
+{{- range $ind, $desc := $descs }}
+	{{ if eq $ind 0 -}} {{ printf "%-24s : %s" $name $desc -}} {{ else }} {{ printf "%-24s  %s" "" $desc -}} {{- end -}}
+{{ end }}
 {{- end -}}
 {{- end }}
 `
@@ -453,8 +457,8 @@ type usageTemplateData struct {
 	Name        string
 	Description string
 	Arguments   []string
-	Keys        map[string]string
-	Flags       map[string]string
+	Keys        map[string][]string
+	Flags       map[string][]string
 	Pipe        string
 }
 
@@ -462,8 +466,8 @@ type usageTemplateData struct {
 func (p *Parser) Usage() {
 	dat := usageTemplateData{
 		Arguments: []string{},
-		Keys:      map[string]string{},
-		Flags:     map[string]string{},
+		Keys:      map[string][]string{},
+		Flags:     map[string][]string{},
 	}
 
 	if p.Name == "" {
@@ -487,6 +491,10 @@ func (p *Parser) Usage() {
 
 		usage := pa.Usage()
 
+		if pa.Shorthand() != "" {
+			usage = fmt.Sprintf("%s - %s", pa.Shorthand(), usage)
+		}
+
 		if pa.IsRepeatable() {
 			k += " ..."
 			usage = fmt.Sprintf("(repeatable) %s", usage)
@@ -498,6 +506,16 @@ func (p *Parser) Usage() {
 	dat.Arguments = positionalArgs
 
 	for _, a := range p.Args() {
+		usage := a.Usage()
+
+		if a.IsRequired() {
+			usage = fmt.Sprintf("(required) %s", usage)
+		}
+
+		if a.Default() != "" {
+			usage += fmt.Sprintf("\n(default=%s)", a.Default())
+		}
+
 		switch a.(type) {
 		case IFlag:
 
@@ -509,7 +527,7 @@ func (p *Parser) Usage() {
 				sh = fmt.Sprintf("[-%s]", a.Shorthand())
 			}
 			n = fmt.Sprintf("%-5s %s", sh, n)
-			dat.Flags[n] = a.Usage()
+			dat.Flags[n] = strings.Split(usage, "\n")
 
 		case IKeyValue:
 
@@ -521,7 +539,7 @@ func (p *Parser) Usage() {
 			}
 
 			n = fmt.Sprintf("%-4s %s", sh, n)
-			dat.Keys[n] = a.Usage()
+			dat.Keys[n] = strings.Split(usage, "\n")
 
 		default:
 			continue
@@ -939,8 +957,4 @@ func (p *Parser) Complete(cmd *complete.Command) {
 		}
 		cmd.Flags[fl.Name()] = predict.Something
 	}
-}
-
-func (p *Parser) Using(elements ...any) *Parser {
-	return p
 }

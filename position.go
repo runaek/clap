@@ -105,7 +105,7 @@ func (p *PositionalArg[T]) Usage() string {
 }
 
 func (p *PositionalArg[T]) Shorthand() string {
-	return ""
+	return p.md.Shorthand()
 }
 
 func (p *PositionalArg[T]) ValueType() string {

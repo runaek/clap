@@ -29,7 +29,11 @@ func Add(args ...Arg) error {
 }
 
 func Using(elements ...any) error {
-	System.Using(elements...)
+	args, err := DeriveAll(elements...)
+	if err != nil {
+		return err
+	}
+	System.Add(args...)
 
 	return System.Valid()
 }

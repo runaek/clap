@@ -8,9 +8,9 @@ import (
 )
 
 type MyProgram struct {
-	Name       string `cli:"!#1:string"`
+	Name       string `cli:"!#1|name:string"`
 	NameUsage  string
-	Roles      []string `cli:"#2...:strings"`
+	Roles      []string `cli:"#2...|roles:strings"`
 	RolesUsage string
 
 	Level        int `cli:"-level:int"`
