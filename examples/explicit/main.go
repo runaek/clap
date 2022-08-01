@@ -8,7 +8,8 @@ import (
 
 var (
 	parser = clap.Must("demo").
-		Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe)
+		Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe).
+		Ok()
 )
 
 func main() {
