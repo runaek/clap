@@ -3,6 +3,7 @@ package parse
 import (
 	"errors"
 	"github.com/hashicorp/go-multierror"
+	"os"
 	"strconv"
 )
 
@@ -107,4 +108,35 @@ func (i Indicator) Parse(input ...string) (I, error) {
 		return I(active), nil
 	}
 	return I(!active), nil
+}
+
+type File struct {
+	Mode *os.FileMode
+	Flag *int
+}
+
+func (f File) Parse(input ...string) (*os.File, error) {
+
+	if len(input) == 0 {
+		return nil, errors.New("missing filepath")
+	}
+
+	var (
+		perm os.FileMode
+		mode int
+	)
+
+	if f.Flag == nil {
+		mode = os.O_CREATE | os.O_RDWR
+	} else {
+		mode = *f.Flag
+	}
+
+	if f.Mode == nil {
+		perm = os.ModePerm
+	} else {
+		perm = *f.Mode
+	}
+
+	return os.OpenFile(input[0], mode, perm)
 }
