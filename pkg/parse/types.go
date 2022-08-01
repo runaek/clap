@@ -116,7 +116,6 @@ type File struct {
 }
 
 func (f File) Parse(input ...string) (*os.File, error) {
-
 	if len(input) == 0 {
 		return nil, errors.New("missing filepath")
 	}
