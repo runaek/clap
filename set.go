@@ -2,6 +2,7 @@ package clap
 
 import (
 	"fmt"
+	"github.com/runaek/clap/pkg/parse"
 	"strconv"
 )
 
@@ -17,6 +18,14 @@ func NewSet() *Set {
 	}
 }
 
+func NewSetWithHelp() *Set {
+	s := NewSet()
+	h := NewFlagP[bool](nil, "help", "h", parse.Bool{}, WithUsage("Display the help-text for the program."))
+	_ = s.AddFlag(h)
+
+	return s
+}
+
 // A Set is a container for a command-line Arg(s) of any Type.
 type Set struct {
 	shorthands map[string]argName  // shorthands for KeyValueArg/FlagArgs, map: shorthand -> argName
@@ -30,7 +39,6 @@ type Set struct {
 
 // Args returns all the Arg(s) within the Set.
 func (s *Set) Args() []Arg {
-
 	keys := s.keys.List()
 	flags := s.flags.List()
 	indexes := s.positions.List()
@@ -70,6 +78,7 @@ func (s *Set) Args() []Arg {
 // Has returns true if there is an Arg with the given Identifier in the Set.
 func (s *Set) Has(id Identifier) bool {
 	_, exists := s.k2n[id.argName()]
+
 	return exists
 }
 
@@ -80,6 +89,7 @@ func (s *Set) Get(id Identifier) Arg {
 	}
 	an := id.argName()
 	name := an.Name()
+
 	switch an.Type() {
 	case FlagType:
 		return s.Flag(name)
@@ -95,7 +105,6 @@ func (s *Set) Get(id Identifier) Arg {
 
 // ByShorthand returns the Arg for the given shorthand identifier, if it exists, otherwise nil.
 func (s *Set) ByShorthand(sh string) Arg {
-
 	if sh == "" {
 		return nil
 	}
@@ -115,7 +124,6 @@ func (s *Set) ByShorthand(sh string) Arg {
 
 // Flag returns the flag for the given Id/identifier, if it exists, otherwise nil.
 func (s *Set) Flag(name string) IFlag {
-
 	if f, exists := s.flags[name]; exists {
 		return f
 	}
@@ -139,7 +147,6 @@ func (s *Set) Flags() []IFlag {
 //
 // Returns ErrDuplicate if the key or alias already exists in the Set.
 func (s *Set) AddFlag(f IFlag, opts ...Option) error {
-
 	f.updateMetadata(opts...)
 
 	if s.Has(f) {
@@ -165,7 +172,6 @@ func (s *Set) AddFlag(f IFlag, opts ...Option) error {
 
 // Key returns the key-value argument for the given Id/identifier, if it exists, otherwise nil.
 func (s *Set) Key(name string) IKeyValue {
-
 	if f, exists := s.keys[name]; exists {
 		return f
 	}
@@ -188,7 +194,6 @@ func (s *Set) KeyValues() []IKeyValue {
 //
 // Returns ErrDuplicate if the key or alias already exists in the Set.
 func (s *Set) AddKeyValue(kv IKeyValue, opts ...Option) error {
-
 	kv.updateMetadata(opts...)
 
 	if s.Has(kv) {
@@ -199,7 +204,6 @@ func (s *Set) AddKeyValue(kv IKeyValue, opts ...Option) error {
 	k := KeyValueType.getIdentifier(name)
 
 	if sh := kv.Shorthand(); sh != "" {
-
 		if existingArgKey, shorthandExists := s.shorthands[sh]; shorthandExists {
 			return fmt.Errorf("%w: shorthand already in use by %q", ErrDuplicate, existingArgKey.Name())
 		}
@@ -214,7 +218,7 @@ func (s *Set) AddKeyValue(kv IKeyValue, opts ...Option) error {
 }
 
 // Pos returns the positional argument at the supplied index, if it exists, otherwise nil.
-func (s *Set) Pos(index int) IPositional {
+func (s *Set) Pos(index int) IPositional { // nolint: ireturn
 	k, exists := s.posArgs[index]
 
 	if !exists {
@@ -241,7 +245,6 @@ func (s *Set) Positions() []IPositional {
 // The Set expects positional arguments to be supplied in order and returns a wrapped ErrInvalidIndex if arguments
 // are specified in an invalid order.
 func (s *Set) AddPosition(a IPositional, opts ...Option) error {
-
 	index := a.Index()
 	expectedIndex := len(s.positions) + 1
 
@@ -282,7 +285,7 @@ func (s *Set) AddPosition(a IPositional, opts ...Option) error {
 }
 
 // Pipe returns the pipe argument for the Set, if it exists, otherwise nil.
-func (s *Set) Pipe() IPipe {
+func (s *Set) Pipe() IPipe { // nolint: ireturn
 	return s.pipe
 }
 
@@ -308,6 +311,7 @@ func (s argMap[A]) List() []A {
 	out := make([]A, len(s))
 
 	i := 0
+
 	for _, a := range s {
 		out[i] = a
 		i++

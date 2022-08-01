@@ -5,6 +5,7 @@
 *.so
 *.dylib
 *.DS_Store
+test.coverage
 
 # Test binary, built with `go test -c`
 *.test

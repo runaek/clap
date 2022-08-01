@@ -33,7 +33,7 @@ func TestParser_Pipe(t *testing.T) {
 	p.Add(f1, f2, p1)
 	a.NoError(p.Valid())
 
-	p.Parse([]string{"cmd", "1234", "-ab"})
+	p.Parse("cmd", "1234", "-ab")
 
 	a.Equal(true, f1.Variable().Unwrap())
 	a.Equal(true, f2.Variable().Unwrap())

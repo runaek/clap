@@ -20,15 +20,17 @@ type IKeyValue interface {
 // NewKeyValue is a constructor for a key-value argument from the command-line.
 func NewKeyValue[T any](variable *T, name string, p parse.Parser[T], opts ...Option) *KeyValueArg[T] {
 	v := NewVariable[T](variable, p)
+
 	return KeyValueUsingVariable[T](name, v, opts...)
 }
 
 // NewKeyValues is a constructor for a repeatable key-valued arguments from the command-line.
 //
-// Automatically converts the FuncTypeParser[T] into a FuncTypeParser[[]T] via SliceParser - use KeyValuesUsingVariable
+// Automatically converts the Func[T] into a Func[[]T] via parse.Slice - use KeyValuesUsingVariable
 // to be able to change this behaviour as required.
 func NewKeyValues[T any](variables *[]T, name string, p parse.Parser[T], opts ...Option) *KeyValueArg[[]T] {
 	v := NewVariables[T](variables, p)
+
 	return KeyValuesUsingVariable(name, v, opts...)
 }
 
@@ -113,6 +115,7 @@ func (k *KeyValueArg[T]) Shorthand() string {
 
 func (k *KeyValueArg[T]) ValueType() string {
 	var zero T
+
 	return strings.TrimPrefix(fmt.Sprintf("%T", zero), "*")
 }
 
@@ -143,13 +146,13 @@ func (k *KeyValueArg[T]) HasDefault() bool {
 func (k *KeyValueArg[T]) updateMetadata(opts ...Option) {
 	if k.md == nil {
 		k.md = NewMetadata(opts...)
+
 		return
 	}
 	k.md.updateMetadata(opts...)
 }
 
 func (k *KeyValueArg[T]) updateValue(s ...string) (err error) {
-
 	v := k.Variable()
 
 	log.Debug("Updating Key Value argument value",
