@@ -49,7 +49,7 @@ func NewFlagsP[T any](val *[]T, name string, shorthand string, parser parse.Pars
 
 // NewFlagP is a constructor for some new *FlagArg[T] with a shorthand.
 func NewFlagP[T any](val *T, name string, shorthand string, parser parse.Parser[T], opts ...Option) *FlagArg[T] {
-	opts = append(opts, WithShorthand(shorthand))
+	opts = append(opts, WithAlias(shorthand))
 	f := NewFlag[T](val, name, parser, opts...)
 	return f
 }

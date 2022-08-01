@@ -29,7 +29,7 @@ var (
 	name    string
 	nameArg = clap.NewKeyValue[string](&name, "name", parse.String{},
 		clap.WithDefault("Obi-Wan Kenobi"),
-		clap.WithShorthand("n"),
+		clap.WithAlias("n"),
 		clap.WithUsage("Enter your name!"))
 
 	debug     bool
