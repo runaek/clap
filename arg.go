@@ -62,7 +62,7 @@ type Arg interface {
 
 	// Shorthand is the single character alias/identifier for the Arg, if applicable
 	//
-	// Can be updated via the WithShorthand Option
+	// Can be updated via the WithAlias Option
 	Shorthand() string
 
 	// Usage returns a usage of the Arg for the user

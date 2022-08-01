@@ -358,8 +358,3 @@ func (a *Argument) Pos() int {
 
 	return a.IndexFrom
 }
-
-//// Default returns a default value for the Argument.
-//func (a *Argument) Default() any {
-//	return a.dflt
-//}

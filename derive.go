@@ -164,7 +164,7 @@ func deriveArgs(src any) ([]Arg, error) {
 		}
 
 		if v.Alias != "" {
-			opts = append(opts, WithShorthand(v.Alias))
+			opts = append(opts, WithAlias(v.Alias))
 		}
 
 		if v.Default != "" {

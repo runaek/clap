@@ -85,7 +85,7 @@ func TestSet_AddKeyValue(t *testing.T) {
 			Run: func(set *Set, a *assert.Assertions) {
 
 				var (
-					k1 = NewKeyValue[string](nil, "key1", parse.String{}, WithShorthand("k"))
+					k1 = NewKeyValue[string](nil, "key1", parse.String{}, WithAlias("k"))
 				)
 
 				a.NoError(set.AddKeyValue(k1))
@@ -101,8 +101,8 @@ func TestSet_AddKeyValue(t *testing.T) {
 			Run: func(set *Set, a *assert.Assertions) {
 
 				var (
-					k1 = NewKeyValue[string](nil, "key1", parse.String{}, WithShorthand("k"))
-					k2 = NewKeyValue[string](nil, "key2", parse.String{}, WithShorthand("k"))
+					k1 = NewKeyValue[string](nil, "key1", parse.String{}, WithAlias("k"))
+					k2 = NewKeyValue[string](nil, "key2", parse.String{}, WithAlias("k"))
 				)
 
 				a.NoError(set.AddKeyValue(k1))

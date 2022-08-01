@@ -3,7 +3,8 @@ codegen:
 
 eg:
 	go build -o bin/example_simple github.com/runaek/clap/examples/derived && \
-	go build -o bin/example_derived github.com/runaek/clap/examples/explicit
+	go build -o bin/example_derived github.com/runaek/clap/examples/explicit && \
+	go build -o bin/example_readme github.com/runaek/clap/examples/readme
 
 generate-derivers: codegen
 	./bin/codegen int int --parser=parse.Int --output=pkg/derive/int.go && \
