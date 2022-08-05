@@ -21,7 +21,7 @@ The general constructor API is pretty much identical to the `flag` package, but 
 var (
 	myValue string 
 	myFlag = clap.NewFlag[string](&myValue, "my-flag-value", parse.String{})
-	//myKey = clap.NewFlag[string](&myValue, "my-key-value", parse.String{})
+	//myKey = clap.NewKeyValue[string](&myValue, "my-key-value", parse.String{})
 	//myPos = clap.NewPosition[string](&myValue, 1, parse.String{})
 )
 ```
