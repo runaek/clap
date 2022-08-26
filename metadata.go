@@ -11,8 +11,8 @@ func NewMetadata(opts ...Option) *Metadata {
 	return md
 }
 
-// WithShorthand adds a shorthand/alias to some Arg if applicable.
-func WithShorthand(sh string) Option {
+// WithAlias adds a shorthand/alias to some Arg if applicable.
+func WithAlias(sh string) Option {
 	return shorthandOpt{Shorthand: sh}
 }
 

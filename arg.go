@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+//go:generate mockgen -destination=mocks.go -copyright_file=internal/mock_header.txt -package=clap github.com/runaek/clap FileReader,FileWriter,FileInfo,PositionalDeriver,KeyValueDeriver,FlagDeriver
+
 // Arg is the shared behaviour of all command-line input types (FlagType, KeyValueType and PositionType). It essentially
 // exposes an API similar to the behaviour seen in the standard 'flags' package, extending support to key-value and
 // positional arguments.
@@ -23,8 +25,8 @@ import (
 //	var (
 //		strVal string
 //		numVal int
-//		myArg = NewKeyValue[string](&strVal, "arg1", parse.String, <options>...) // e.g. arg1=Test123 => strVal=Test123
-//		numFlag = NewFlag[int](&numVal, "amount", parse.Int, <options>...)       // e.g. --amount=123 => numVal=123
+//		myArg = NewKeyValue[string](&strVal, "arg1", parse.String, <options>...) // arg1=Test123 => strVal=Test123
+//		numFlag = NewFlag[int](&numVal, "amount", parse.Int, <options>...)       // --amount=123 => numVal=123
 //
 //		parser = clap.New("program-Id").
 //				Add(myArg, numFlag).
@@ -60,7 +62,7 @@ type Arg interface {
 
 	// Shorthand is the single character alias/identifier for the Arg, if applicable
 	//
-	// Can be updated via the WithShorthand Option
+	// Can be updated via the WithAlias Option
 	Shorthand() string
 
 	// Usage returns a usage of the Arg for the user
@@ -140,7 +142,6 @@ func ValueOf[T any](arg Arg) (T, error) {
 
 // ReferenceTo is a helper function for retrieving a reference to the value for an Arg.
 func ReferenceTo[T any](arg Arg) (*T, error) {
-
 	if arg == nil {
 		return nil, errors.New("nil reference")
 	}
@@ -180,7 +181,6 @@ func UpdateMetadata(u Updater, options ...Option) {
 type argName string
 
 func (id argName) Type() Type {
-
 	parts := strings.SplitN(string(id), ":", 2)
 
 	switch strings.ToLower(parts[0]) {
@@ -212,7 +212,6 @@ func (id argName) argName() argName {
 // ValidateDefaultValue is a helper function for retrieving and attempting to parse the actual typed default value
 // of an Arg.
 func ValidateDefaultValue[T any](arg TypedArg[T]) (T, error) {
-
 	var zero T
 	switch a := arg.(type) {
 	case IFlag:

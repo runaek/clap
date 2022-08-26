@@ -43,7 +43,7 @@ func TestUpdateMetadata(t *testing.T) {
 			Input: NewFlag[string](nil, "f1", parse.String{}, WithDefault("first_default")),
 			Updates: []Option{
 				WithDefault("second_default"),
-				WithShorthand("f"),
+				WithAlias("f"),
 			},
 			Output: Metadata{
 				argUsage:     "f1 - a string flag variable.",

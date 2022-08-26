@@ -27,7 +27,7 @@ func TestKeyValueArg_Constructors(t *testing.T) {
 	}{
 		"NoOptions": {},
 		"ShorthandApplies": {
-			Options: []Option{WithShorthand("t")},
+			Options: []Option{WithAlias("t")},
 		},
 		"DefaultApplies": {
 			Options: []Option{

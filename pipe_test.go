@@ -31,7 +31,7 @@ func TestPipeArg_Constructors(t *testing.T) {
 		},
 		"WithShorthandIsNoOp": {
 			Options: []Option{
-				WithShorthand("t"),
+				WithAlias("t"),
 			},
 		},
 		"AsRequiredIsNoOp": {

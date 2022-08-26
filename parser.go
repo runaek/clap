@@ -23,13 +23,13 @@ const (
 	PanicOnError    = ErrorHandling(flag.PanicOnError)
 )
 
-// HandleError handles some error according to the ErrorHandling, returns false if e == nil, otherwise what/whether the
+// handleError handles some error according to the ErrorHandling, returns false if e == nil, otherwise what/whether the
 // function returns is determined by the ErrHandling mode:
 //
 //	ContinueOnError => return true
 //	PanicOnError    => panic with error message
 //  ExitOnError     => write error message to w and exit 1
-func HandleError(w io.Writer, eh ErrorHandling, e error) bool {
+func handleError(w io.Writer, eh ErrorHandling, e error) bool {
 	if e == nil {
 		return false
 	}
@@ -44,14 +44,23 @@ func HandleError(w io.Writer, eh ErrorHandling, e error) bool {
 		}
 	}
 
+	isHelp := errors.Is(e, ErrHelp)
+
 	switch eh {
 	case ContinueOnError:
-		return true
+		if isHelp {
+			return false
+		}
 	case PanicOnError:
-		panic(e)
+		if !isHelp {
+			panic(e)
+		}
 	case ExitOnError:
-		_, _ = fmt.Fprint(w, e)
-		os.Exit(1)
+		if !isHelp {
+			_, _ = fmt.Fprint(w, e)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	default:
 		panic(fmt.Errorf("invalid error handling detected whilst handling error: %w", e))
 	}
@@ -60,40 +69,45 @@ func HandleError(w io.Writer, eh ErrorHandling, e error) bool {
 }
 
 // New creates a new command-line argument Parser with ErrorHandling mode ContinueOnError.
-func New(name string) *Parser {
-	return NewParser(name, ContinueOnError)
+//
+// `elements` can be either concrete Arg implementations, or structs with Arg(s) defined via struct-tags, which
+// will be derived at runtime.
+func New(name string, elements ...any) (*Parser, error) {
+	return NewAt(name, ContinueOnError, elements...)
 }
 
-// NewUsing is a constructor for a Parser at a specific ErrorHandling level.
-//
-// If no elements are supplied, NewUsing is guaranteed to return a nil error.
-//
-// TODO: If elements are supplied, extra Arg(s) are attempted to be derived from each element.
-func NewUsing(name string, errHandling ErrorHandling, elements ...any) (*Parser, error) {
+// Must is a constructor for a *Parser that panics if any error occurs.
+func Must(name string, elements ...any) *Parser {
+	p, err := NewAt(name, ContinueOnError, elements...)
 
-	s := NewParser(name, errHandling)
-
-	if len(elements) == 0 {
-		return s, nil
-	}
-
-	return s, s.Valid()
-}
-
-func Must(name string, errHandling ErrorHandling, elements ...any) *Parser {
-	p, err := NewUsing(name, errHandling, elements...)
-
-	if HandleError(p.Stderr, p.ErrorHandling, err) {
-		_, _ = fmt.Fprintln(p.Stderr, err)
-		os.Exit(1)
+	if err != nil {
+		panic(fmt.Errorf("unable to construct Parser: %w", err))
 	}
 
 	return p
 }
 
+// NewAt is a constructor for a Parser at a specific ErrorHandling level.
+//
+// If no elements are supplied, NewAt is guaranteed to return a nil error.
+func NewAt(name string, errHandling ErrorHandling, elements ...any) (*Parser, error) {
+	s := NewParser(name, errHandling)
+
+	if len(elements) != 0 {
+		args, err := DeriveAll(elements...)
+
+		if err != nil {
+			return s, err
+		}
+
+		s.Add(args...)
+	}
+
+	return s, s.Valid()
+}
+
 // NewParser is a constructor for a new command-line argument Parser.
 func NewParser(n string, errHandling ErrorHandling) *Parser {
-
 	validationErr := new(multierror.Error)
 	validationErr.ErrorFormat = func(es []error) string {
 		hdr := fmt.Sprintf("invalid parser state [%d error(s) occurred]:\n", len(es))
@@ -109,7 +123,7 @@ func NewParser(n string, errHandling ErrorHandling) *Parser {
 
 	return &Parser{
 		Id:            n,
-		Set:           NewSet(),
+		Set:           NewSetWithHelp(),
 		ErrorHandling: errHandling,
 		Stdout:        os.Stdout,
 		Stdin:         os.Stdin,
@@ -133,6 +147,7 @@ type Parser struct {
 
 	// Name of the program
 	Name string
+
 	// Description of the program
 	Description string
 
@@ -209,7 +224,7 @@ func (p *Parser) Add(args ...Arg) *Parser {
 // State checks the 'state' of some Arg by its Identifier *after* Parse has been called (always returning nil before).
 func (p *Parser) State(id Identifier) error {
 	err, exists := p.argState[id.argName()]
-	if !exists || err == ok {
+	if !exists || err == ok { // nolint: errorlint
 		return nil
 	}
 
@@ -236,7 +251,6 @@ func (p *Parser) AddFlag(f IFlag, opts ...Option) *Parser {
 func (p *Parser) AddKeyValue(kv IKeyValue, opts ...Option) *Parser {
 	if err := p.Set.AddKeyValue(kv, opts...); err != nil {
 		p.vErr = multierror.Append(p.vErr, fmt.Errorf("%w: unable to add key-value", err))
-
 	}
 	return p
 }
@@ -245,9 +259,16 @@ func (p *Parser) AddKeyValue(kv IKeyValue, opts ...Option) *Parser {
 func (p *Parser) AddPipe(pipe IPipe, options ...Option) *Parser {
 	if err := p.Set.AddPipe(pipe, options...); err != nil {
 		p.vErr = multierror.Append(p.vErr, fmt.Errorf("%w: unable to add pipe", err))
+
 		return p
 	}
 	pipe.updateInput(p.Stdin)
+	return p
+}
+
+// WithDescription sets a description for the Parser.
+func (p *Parser) WithDescription(desc string) *Parser {
+	p.Description = desc
 	return p
 }
 
@@ -256,8 +277,7 @@ func (p *Parser) AddPipe(pipe IPipe, options ...Option) *Parser {
 // Parse does not return an error, instead, during the run any errors that occur are collected and stored internally
 // to be retrieved via the Err method. If the ErrorHandling is not set to ContinueOnError, then errors during Parse
 // will cause the program to either panic of exit.
-func (p *Parser) Parse(argv []string) {
-
+func (p *Parser) Parse(argv ...string) {
 	log.Debug("Parsing input",
 		zap.String("parser", p.Id),
 		zap.Int("handling", int(p.ErrorHandling)),
@@ -265,11 +285,12 @@ func (p *Parser) Parse(argv []string) {
 		zap.Int("shift", p.Shift),
 		zap.Strings("input", argv))
 
-	if argv == nil {
+	if len(argv) == 0 {
 		log.Debug("Using os.Args", zap.Strings("input", os.Args))
 		argv = os.Args[1+p.Shift:]
-	} else if len(argv) <= p.Shift {
+	} else if len(argv) <= p.Shift && len(argv) > 0 {
 		p.pErr = fmt.Errorf("unable to parse, invalid number of arguments: got %d but want at least %d", len(argv), p.Shift)
+
 		return
 	}
 
@@ -292,8 +313,13 @@ func (p *Parser) Parse(argv []string) {
 	p.pErr = parseErr
 
 	for tkns, consumed, err := argv[p.Shift:], []string{}, error(nil); err != finished; tkns, consumed, err = p.scan(tkns) {
-
 		if err == nil {
+			continue
+		}
+
+		if errors.Is(err, ErrHelp) {
+			log.Debug("Help requested")
+			p.pErr = multierror.Append(p.pErr, ErrHelp)
 			continue
 		}
 
@@ -301,9 +327,11 @@ func (p *Parser) Parse(argv []string) {
 			scanErr := ErrScanning(err, consumed...)
 			log.Warn("Error during token scan", zap.Error(scanErr))
 			p.pErr = multierror.Append(p.pErr, scanErr)
+
 			continue
 		} else if errors.Is(err, ErrUnidentified) {
 			log.Warn("Unidentified argument error suppressed", zap.Error(err))
+
 			continue
 		}
 
@@ -312,20 +340,27 @@ func (p *Parser) Parse(argv []string) {
 			log.Warn("Error during token scan", zap.Error(scanErr))
 			p.pErr = multierror.Append(p.pErr, scanErr)
 		}
+
 		log.Debug("Scanned", zap.Strings("tkns", tkns), zap.Strings("consumed", consumed), zap.Error(err))
 	}
 
 	p.parse()
 
-	HandleError(p.Stderr, p.ErrorHandling, p.Err())
+	if errors.Is(p.Err(), ErrHelp) {
+		return
+	}
+	handleError(p.Stderr, p.ErrorHandling, p.Err())
 }
 
 // Ok is a helper function that panics if there were any Parser errors. This is useful for running at the end of a chain
 // of method calls for the Parser.
 //
 // Returns the Parser for convenience.
-func (p *Parser) Ok() *Parser {
 
+// Ok checks the state of the Parser (both parse and validation errors, unless SuppressValidation is set)
+//
+// Returns the *Parser for convenience.
+func (p *Parser) Ok() *Parser {
 	parserErr := p.pErr
 	validationErr := p.vErr
 
@@ -333,8 +368,14 @@ func (p *Parser) Ok() *Parser {
 		parserErr = multierror.Append(parserErr, validationErr)
 	}
 
-	if HandleError(p.Stderr, p.ErrorHandling, parserErr) {
-		_, _ = fmt.Fprint(p.Stdout, parserErr)
+	if errors.Is(parserErr, ErrHelp) {
+		p.Usage()
+		os.Exit(0)
+	}
+
+	if handleError(p.Stderr, p.ErrorHandling, parserErr) {
+		_, _ = fmt.Fprintln(p.Stdout, parserErr)
+
 		if !p.SuppressUsage {
 			p.Usage()
 		}
@@ -387,23 +428,27 @@ PIPE: {{ .Pipe }}
 
 ARGUMENTS
 {{- range .Arguments }}
-	{{ . -}}
+	{{ printf "%s" . -}}
 {{- end -}}
 {{- end }}
 
 {{- if .Keys }}
 
 OPTIONS (<key>=<value>)
-{{- range $name, $desc := .Keys }}
-	{{ printf "%-24s : %s" $name $desc }} 
+{{- range $name, $descs := .Keys }}
+{{- range $ind, $desc := $descs }}
+	{{ if eq $ind 0 -}}{{ printf "%-24s : %s" $name $desc }}{{ else }}{{ printf "%-24s  %s" "" $desc }}{{- end -}}
+{{ end }}
 {{- end -}}
 {{- end }}
 
 {{- if .Flags }}
 
 FLAGS
-{{- range $name, $desc := .Flags }}
-	{{ printf "%-24s : %s" $name $desc }} 
+{{- range $name, $descs := .Flags }}
+{{- range $ind, $desc := $descs }}
+	{{ if eq $ind 0 -}} {{ printf "%-24s : %s" $name $desc -}} {{ else }} {{ printf "%-24s  %s" "" $desc -}} {{- end -}}
+{{ end }}
 {{- end -}}
 {{- end }}
 `
@@ -412,22 +457,23 @@ type usageTemplateData struct {
 	Name        string
 	Description string
 	Arguments   []string
-	Keys        map[string]string
-	Flags       map[string]string
+	Keys        map[string][]string
+	Flags       map[string][]string
 	Pipe        string
 }
 
 // Usage writes the help-text/usage to the output.
 func (p *Parser) Usage() {
-
 	dat := usageTemplateData{
 		Arguments: []string{},
-		Keys:      map[string]string{},
-		Flags:     map[string]string{},
+		Keys:      map[string][]string{},
+		Flags:     map[string][]string{},
 	}
 
 	if p.Name == "" {
 		dat.Name = p.Id
+	} else if p.Id == "SYSTEM" {
+		dat.Name = "<program_name>"
 	} else {
 		dat.Name = p.Name
 	}
@@ -441,10 +487,14 @@ func (p *Parser) Usage() {
 	positionalArgs := make([]string, len(p.Positions()))
 
 	for _, pa := range p.Positions() {
-		//dat.Arguments = append(dat.Arguments, )
 		k := fmt.Sprintf("%d", pa.Index())
 
 		usage := pa.Usage()
+
+		if pa.Shorthand() != "" {
+			usage = fmt.Sprintf("%s - %s", pa.Shorthand(), usage)
+		}
+
 		if pa.IsRepeatable() {
 			k += " ..."
 			usage = fmt.Sprintf("(repeatable) %s", usage)
@@ -456,27 +506,40 @@ func (p *Parser) Usage() {
 	dat.Arguments = positionalArgs
 
 	for _, a := range p.Args() {
+		usage := a.Usage()
+
+		if a.IsRequired() {
+			usage = fmt.Sprintf("(required) %s", usage)
+		}
+
+		if a.Default() != "" {
+			usage += fmt.Sprintf("\n(default=%s)", a.Default())
+		}
 
 		switch a.(type) {
 		case IFlag:
 
 			n := "--" + a.Name()
+
 			var sh string
+
 			if a.Shorthand() != "" {
 				sh = fmt.Sprintf("[-%s]", a.Shorthand())
 			}
 			n = fmt.Sprintf("%-5s %s", sh, n)
-			dat.Flags[n] = a.Usage()
+			dat.Flags[n] = strings.Split(usage, "\n")
 
 		case IKeyValue:
 
 			n := a.Name()
 			var sh string
+
 			if a.Shorthand() != "" {
 				sh = fmt.Sprintf("[%s]", a.Shorthand())
 			}
+
 			n = fmt.Sprintf("%-4s %s", sh, n)
-			dat.Keys[n] = a.Usage()
+			dat.Keys[n] = strings.Split(usage, "\n")
 
 		default:
 			continue
@@ -497,15 +560,16 @@ var (
 	ok       = errors.New("ok")
 )
 
-// scan some input for argument tokens (i.e. a positional argument, a key-value argument value or a flag argument value).
+// scan some input for argument tokens (i.e. a positional argument, a key-value argument value or a
+// flag argument value).
 //
-// Returns the tokens that were 'consumed' (successful or not), the remaining un-scanned tokens in the input and any errors
-// associated with scanning the 'consumed' tokens
+// Returns the tokens that were 'consumed' (successful or not), the remaining un-scanned tokens in
+// the input and any errors associated with scanning the 'consumed' tokens
 //
-// NOTE: will *not* recursively call itself, it will scan a single token (1 or 2 elements) and return - it is on the
-// caller to make repeated calls to scan to consume the entire input, which is when scan will return finished.
+// NOTE: will *not* recursively call itself, it will scan a single token (1 or 2 elements) and
+// return - it is on the caller to make repeated calls to scan to consume the entire input, which
+// is when scan will return finished.
 func (p *Parser) scan(input []string) (remaining, consumed []string, err error) {
-
 	if len(input) < 1 {
 		return nil, nil, finished
 	}
@@ -524,6 +588,9 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 	flagSingleDash := false
 	argValueDetected := false
 
+	if this == "-h" || this == "--help" {
+		return left, consumed, ErrHelp
+	}
 	// detect the Type and argID from 'this' and sanitize (additionally, calculated argValue if possible)
 	switch this[0] {
 	case '-':
@@ -537,7 +604,6 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		fallthrough
 	default:
 		if strings.Contains(this, "=") {
-
 			// argType will be == FlagType if it was detected in the above block, if it is
 			// still Unrecognised, then it must be a KeyValueType
 			if argType == Unrecognised {
@@ -554,7 +620,6 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 			// both argID and argValue can be detected
 			argID, argValue = keyValue[0], keyValue[1]
 			argValueDetected = true
-
 		} else if argType == FlagType {
 			argID = this
 		} else if argType == Unrecognised {
@@ -613,7 +678,6 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 
 		if fA == nil {
 			if flagSingleDash {
-
 				if len(argID) == 1 {
 					if an, exists := p.shorthands[argID]; exists && an.Type() == FlagType {
 						return left, consumed, nil
@@ -626,7 +690,6 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 					var newInput []string
 
 					for _, c := range argID {
-
 						newInput = append(newInput, fmt.Sprintf("-%c", c))
 
 						if a, exists := p.shorthands[string(c)]; !exists || a.Type() != FlagType {
@@ -637,11 +700,11 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 					newInput = append(newInput, left...)
 
 					argValueDetected = true
+
 					return newInput, []string{this}, nil
 				} else {
 					return left, []string{token}, fmt.Errorf("%w: no such Flag", ErrUnidentified)
 				}
-
 			} else {
 				// fA == nil => a flag with Id argID does not exist
 				return left, []string{token}, fmt.Errorf("%w: no such Flag", ErrUnidentified)
@@ -658,6 +721,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		// Otherwise, we know we need to consume (or try to) the next token to get the value for the flag
 		if fA.IsIndicator() {
 			log.Debug("Handling INDICATOR flag", zap.String("_t", fmt.Sprintf("%T", fA)))
+
 			switch indF := fA.(type) {
 			case *FlagArg[bool]:
 
@@ -705,7 +769,6 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 //
 // NOTE: assumes that input has already been scanned
 func (p *Parser) parse() {
-
 	if pipe := p.Pipe(); pipe != nil && pipe.IsSupplied() {
 		if err := pipe.updateValue(); err != nil {
 			p.updateState(pipe, err)
@@ -717,9 +780,10 @@ func (p *Parser) parse() {
 	}
 
 	variadicIndex := -1
-	var variadicValues []string
-	for im1, v := range p.positionalValues {
 
+	var variadicValues []string
+
+	for im1, v := range p.positionalValues {
 		pA := p.Pos(im1 + 1)
 
 		// we have reached the end of the positional arguments, or we are processing
@@ -734,6 +798,7 @@ func (p *Parser) parse() {
 
 		if pA.IsRepeatable() {
 			variadicIndex = im1 + 1
+
 			variadicValues = append(variadicValues, v)
 		} else {
 			if err := pA.updateValue(v); err != nil {
@@ -749,8 +814,8 @@ func (p *Parser) parse() {
 	if variadicIndex > 0 {
 		variadicPosArg := p.Pos(variadicIndex)
 		log.Debug("Updating variadic positional arguments", zap.Strings("vals", variadicValues))
-		if err := variadicPosArg.updateValue(variadicValues...); err != nil {
 
+		if err := variadicPosArg.updateValue(variadicValues...); err != nil {
 			p.updateState(variadicPosArg, err)
 
 			if variadicPosArg.IsRequired() || p.Strict {
@@ -760,12 +825,12 @@ func (p *Parser) parse() {
 	}
 
 	for name, vs := range p.keyValues {
-
 		kvA := p.Key(name)
 
 		// no need to log an error since this would have been noticed during the scan
 		if kvA == nil {
 			log.Warn("No such key-value argument to parse", zap.String("name", name), zap.Strings("values", vs))
+
 			continue
 		}
 
@@ -780,7 +845,6 @@ func (p *Parser) parse() {
 	}
 
 	for name, vs := range p.flagValues {
-
 		fA := p.Flag(name)
 
 		// no need to log an error since this would have been noticed during the scan
@@ -800,20 +864,16 @@ func (p *Parser) parse() {
 	}
 
 	for _, a := range p.Args() {
-
-		log.Debug("Checking Argument", zap.String("name", a.Name()), zap.Stringer("type", a.Type()))
+		log.Debug("Checking Argument", zap.String("name", a.Name()), zap.Stringer("type", a.Type()), zap.String("default", a.Default()))
 
 		if a.IsParsed() {
 			p.updateState(a, ok)
+
 			continue
 		}
 
 		// error parsing has already been reported
 		if err := p.State(a); err != nil {
-			continue
-		}
-
-		if !a.IsRequired() {
 			continue
 		}
 
@@ -862,7 +922,6 @@ func (p *Parser) updateState(a Arg, state error) {
 
 // Complete attaches arguments and flags to the completion Command for autocompletion support.
 func (p *Parser) Complete(cmd *complete.Command) {
-
 	var argPredictions []complete.Predictor
 
 	if cmd.Args != nil {
@@ -893,12 +952,9 @@ func (p *Parser) Complete(cmd *complete.Command) {
 	for _, fl := range p.Flags() {
 		if fl.IsIndicator() {
 			cmd.Flags[fl.Name()] = predict.Nothing
+
 			continue
 		}
 		cmd.Flags[fl.Name()] = predict.Something
 	}
-}
-
-func (p *Parser) Using(elements ...any) *Parser {
-	return p
 }

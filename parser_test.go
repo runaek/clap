@@ -75,7 +75,7 @@ func (tc TestMockParser) Run(t *testing.T) {
 	tc.TC(&tc)
 
 	a := assert.New(t)
-	sut := New("test-parser")
+	sut := Must("test-parser")
 
 	if tc.setup != nil {
 		tc.setup(sut)
@@ -91,7 +91,7 @@ func (tc TestMockParser) Run(t *testing.T) {
 		a.NotNilf(sut.Valid(), "expected a non-nil error")
 	}
 
-	sut.Parse(tc.input)
+	sut.Parse(tc.input...)
 
 	if !tc.expectParseErr {
 		a.NoError(sut.Err(), "unexpected parser error")
@@ -232,7 +232,7 @@ func TestParser_Parse(t *testing.T) {
 						a.Equal([]string{"arg3", "arg4"}, remainder.Variable().Unwrap())
 						a.Equal("hello", k2.Variable().Unwrap())
 
-						p.Parse([]string{"1234", "arg3", "key2=hello", "arg4"})
+						p.Parse("1234", "arg3", "key2=hello", "arg4")
 
 						a.Equal(p.positionalValues, []string{"1234", "arg3", "arg4"})
 					})
@@ -329,6 +329,7 @@ OPTIONS (<key>=<value>)
 
 FLAGS
 	[-f]  --f1               : f1 - a []string flag variable.
+	[-h]  --help             : Display the help-text for the program.
 `, string(data))
 
 }

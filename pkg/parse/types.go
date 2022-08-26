@@ -3,6 +3,7 @@ package parse
 import (
 	"errors"
 	"github.com/hashicorp/go-multierror"
+	"os"
 	"strconv"
 )
 
@@ -38,7 +39,6 @@ func (_ Strings) Parse(input ...string) ([]string, error) {
 type Int struct{}
 
 func (_ Int) Parse(in ...string) (int, error) {
-
 	if len(in) == 0 {
 		return 0, ErrEmptyInput
 	}
@@ -62,7 +62,6 @@ func (_ Ints) Parse(input ...string) ([]int, error) {
 	ip := Int{}
 
 	for i, in := range input {
-
 		if iv, err := ip.Parse(in); err != nil {
 			res = multierror.Append(res, err)
 		} else {
@@ -92,4 +91,51 @@ type Counter struct{}
 
 func (_ Counter) Parse(input ...string) (C, error) {
 	return C(len(input)), nil
+}
+
+// I is a special 'indicator' that acts as a boolean switch that can be supplied multiple times.
+type I bool
+
+// Indicator is a parser for some I - it flips the value for each time the input is supplied/detected.
+type Indicator struct {
+	Initial bool
+}
+
+func (i Indicator) Parse(input ...string) (I, error) {
+	active := i.Initial
+
+	if len(input)%2 == 0 {
+		return I(active), nil
+	}
+	return I(!active), nil
+}
+
+type File struct {
+	Mode *os.FileMode
+	Flag *int
+}
+
+func (f File) Parse(input ...string) (*os.File, error) {
+	if len(input) == 0 {
+		return nil, errors.New("missing filepath")
+	}
+
+	var (
+		perm os.FileMode
+		mode int
+	)
+
+	if f.Flag == nil {
+		mode = os.O_CREATE | os.O_RDWR
+	} else {
+		mode = *f.Flag
+	}
+
+	if f.Mode == nil {
+		perm = os.ModePerm
+	} else {
+		perm = *f.Mode
+	}
+
+	return os.OpenFile(input[0], mode, perm)
 }

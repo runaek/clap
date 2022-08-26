@@ -18,12 +18,14 @@ type IPositional interface {
 	mustEmbedPosition()
 }
 
+// NewPosition is a constructor for a positional argument at some index.
 func NewPosition[T any](variable *T, index int, parser parse.Parser[T], opts ...Option) *PositionalArg[T] {
 	return PositionUsingVariable[T](index, NewVariable[T](variable, parser), opts...)
 }
 
+// NewPositions is a constructor for a number of positional arguments starting from some index.
 func NewPositions[T any](variables *[]T, fromIndex int, parser parse.Parser[T], opts ...Option) *PositionalArg[[]T] {
-	return PositionsUsingVariable[T](fromIndex, NewVariable[[]T](variables, parse.SliceParser[T](parser)), opts...)
+	return PositionsUsingVariable[T](fromIndex, NewVariable[[]T](variables, parse.Slice[T](parser)), opts...)
 }
 
 func PositionUsingVariable[T any](index int, v Variable[T], opts ...Option) *PositionalArg[T] {
@@ -33,7 +35,7 @@ func PositionUsingVariable[T any](index int, v Variable[T], opts ...Option) *Pos
 	if md.Usage() == "" {
 		md.argUsage = "A positional argument."
 	}
-	opts = append(opts, positionOptions...)
+
 	return &PositionalArg[T]{
 		md:       md,
 		v:        v,
@@ -103,7 +105,7 @@ func (p *PositionalArg[T]) Usage() string {
 }
 
 func (p *PositionalArg[T]) Shorthand() string {
-	return ""
+	return p.md.Shorthand()
 }
 
 func (p *PositionalArg[T]) ValueType() string {
@@ -147,6 +149,7 @@ func (p *PositionalArg[T]) updateMetadata(opts ...Option) {
 
 	if p.md == nil {
 		p.md = NewMetadata(opts...)
+
 		return
 	}
 
@@ -154,7 +157,6 @@ func (p *PositionalArg[T]) updateMetadata(opts ...Option) {
 }
 
 func (p *PositionalArg[T]) updateValue(inputs ...string) (err error) {
-
 	v := p.Variable()
 
 	log.Debug("Updating PositionalArg",
@@ -167,16 +169,13 @@ func (p *PositionalArg[T]) updateValue(inputs ...string) (err error) {
 	if p.parsed {
 		return nil
 	}
-
 	defer func() {
-
 		if len(inputs) > 0 {
 			p.supplied = true
 		}
 
 		if err == nil {
 			p.parsed = true
-
 		} else {
 			log.Debug("Error updating Positional argument value",
 				zap.String("pos_index", p.Name()),

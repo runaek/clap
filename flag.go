@@ -22,12 +22,11 @@ type IFlag interface {
 
 // Help is a constructor for some *FlagArg[bool] (identified by '--help'/'-h') type.
 func Help(helpRequested *bool, desc string) *FlagArg[bool] {
-
 	if desc == "" {
 		desc = "Display the help-text for a command or program."
 	}
 
-	fl := NewFlagP[bool](helpRequested, "help", "h", parse.Bool{}, WithUsage(desc), WithDefault("false"))
+	fl := NewFlagP[bool](helpRequested, "help", "h", parse.Bool{}, WithUsage(desc))
 	return fl
 }
 
@@ -39,19 +38,18 @@ func NewFlag[T any](val *T, name string, parser parse.Parser[T], opts ...Option)
 // NewFlags is a constructor for a repeatable *FlagArg[[]T].
 func NewFlags[T any](val *[]T, name string, parser parse.Parser[T], options ...Option) *FlagArg[[]T] {
 	return FlagsUsingVariable[T](name, NewVariables[T](val, parser), options...)
-
 }
 
 // NewFlagsP is a constructor for a repeatable *FlagArg[[]T] with a shorthand.
 func NewFlagsP[T any](val *[]T, name string, shorthand string, parser parse.Parser[T], options ...Option) *FlagArg[[]T] {
-	f := NewFlagP[[]T](val, name, shorthand, parse.SliceParser[T](parser), options...)
+	f := NewFlagP[[]T](val, name, shorthand, parse.Slice[T](parser), options...)
 	f.repeatable = true
 	return f
 }
 
 // NewFlagP is a constructor for some new *FlagArg[T] with a shorthand.
 func NewFlagP[T any](val *T, name string, shorthand string, parser parse.Parser[T], opts ...Option) *FlagArg[T] {
-	opts = append(opts, WithShorthand(shorthand))
+	opts = append(opts, WithAlias(shorthand))
 	f := NewFlag[T](val, name, parser, opts...)
 	return f
 }
@@ -184,7 +182,6 @@ func (f *FlagArg[T]) HasDefault() bool {
 }
 
 func (f *FlagArg[T]) updateValue(s ...string) (err error) {
-
 	v := f.Variable()
 
 	log.Debug("Updating FlagArg argument value",
@@ -235,6 +232,7 @@ func (f *FlagArg[T]) updateValue(s ...string) (err error) {
 func (f *FlagArg[T]) updateMetadata(opts ...Option) {
 	if f.md == nil {
 		f.md = NewMetadata(opts...)
+
 		return
 	}
 

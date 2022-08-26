@@ -6,17 +6,18 @@ type Parser[T any] interface {
 	Parse(input ...string) (T, error)
 }
 
-// A FuncTypeParser is a convenient Parser[T] implementation.
-type FuncTypeParser[T any] func(input ...string) (output T, err error)
+// A Func is a convenient Parser[T] implementation.
+type Func[T any] func(input ...string) (output T, err error)
 
-func (fn FuncTypeParser[T]) Parse(input ...string) (T, error) {
+func (fn Func[T]) Parse(input ...string) (T, error) {
 	return fn(input...)
 }
 
-// SliceParser is a helper function to convert a FuncTypeParser[T] into a FuncTypeParser[[]T].
-func SliceParser[T any](p Parser[T]) Parser[[]T] {
-	return FuncTypeParser[[]T](func(input ...string) ([]T, error) {
-
+// Slice is a helper function to convert a Parser[T] into a Parser[[]T].
+//
+// Return type is a Func[[]T].
+func Slice[T any](p Parser[T]) Parser[[]T] {
+	return Func[[]T](func(input ...string) ([]T, error) {
 		out := make([]T, len(input))
 
 		for i, in := range input {
@@ -31,9 +32,11 @@ func SliceParser[T any](p Parser[T]) Parser[[]T] {
 	})
 }
 
-// AnonymizeParser is a helper function for converting a typed FuncTypeParser into an untyped FuncTypeParser.
-func AnonymizeParser[T any](parser Parser[T]) Parser[any] {
-	return FuncTypeParser[any](func(input ...string) (output any, err error) {
+// Anonymize is a helper function for converting a typed Parser[T] into an untyped Parser[any].
+//
+// Returned type is a Func[any].
+func Anonymize[T any](parser Parser[T]) Parser[any] {
+	return Func[any](func(input ...string) (output any, err error) {
 		return parser.Parse(input...)
 	})
 }

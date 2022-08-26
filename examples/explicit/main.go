@@ -7,10 +7,30 @@ import (
 )
 
 var (
+	parser = clap.Must("demo").
+		Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe).
+		Ok()
+)
+
+func main() {
+	parser.Parse()
+	parser.Ok()
+
+	fmt.Printf("Name:    %s\n", name)
+	fmt.Printf("Debug:   %t\n", debug)
+	fmt.Printf("Dev:     %t\n", dev)
+	fmt.Printf("Func:    %s\n", funcName)
+	fmt.Printf("Args:    %s\n", args)
+	fmt.Printf("CSVArgs: %s\n", csvArgs)
+	fmt.Printf("Counter: %d\n", counter)
+	fmt.Printf("Id:      %s\n", ident)
+}
+
+var (
 	name    string
 	nameArg = clap.NewKeyValue[string](&name, "name", parse.String{},
 		clap.WithDefault("Obi-Wan Kenobi"),
-		clap.WithShorthand("n"),
+		clap.WithAlias("n"),
 		clap.WithUsage("Enter your name!"))
 
 	debug     bool
@@ -47,27 +67,3 @@ var (
 	csvPipe = clap.CSVPipe[[]string](&csvArgs, parse.Strings{},
 		clap.WithUsage("Comma-separated data from a pipe."))
 )
-
-func main() {
-	clap.SetName("demo")
-	clap.SetDescription("This is a demonstration program.")
-
-	if err := clap.Add(debugFlag, counterFlag, devFlag, idFlag, funcNamePos, argsPos, nameArg, csvPipe); err != nil {
-		panic(err)
-	}
-
-	if err := clap.Parse(); err != nil {
-		fmt.Printf("Parser Error: %s\n", err)
-	}
-
-	fmt.Printf("Name:    %s\n", name)
-	fmt.Printf("Debug:   %t\n", debug)
-	fmt.Printf("Dev:     %t\n", dev)
-	fmt.Printf("Func:    %s\n", funcName)
-	fmt.Printf("Args:    %s\n", args)
-	fmt.Printf("CSVArgs: %s\n", csvArgs)
-	fmt.Printf("Counter: %d\n", counter)
-	fmt.Printf("Id:      %s\n", ident)
-
-	clap.Ok()
-}
