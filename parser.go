@@ -296,6 +296,8 @@ func (p *Parser) Parse(argv ...string) {
 
 	p.argState = map[argName]error{}
 	p.positionalValues = nil
+	p.keyValues = map[string][]string{}
+	p.flagValues = map[string][]string{}
 
 	parseErr := new(multierror.Error)
 	parseErr.ErrorFormat = func(es []error) string {
