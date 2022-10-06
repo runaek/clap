@@ -90,6 +90,92 @@ type Arg interface {
 	IsRepeatable() bool
 }
 
+func newArgCore[T any](v *T, parser parse.Parser[T], options ...Option) *argCore[T] {
+	md := NewMetadata(options...)
+	variable := NewVariable(v, parser)
+
+	return &argCore[T]{
+		v:  variable,
+		md: md,
+	}
+}
+
+// argCore contains the underlying Variable[T] and *Metadata for an Arg.
+type argCore[T any] struct {
+	v  Variable[T]
+	md *Metadata
+
+	repeatable, supplied, parsed bool
+}
+
+func (a *argCore[T]) updateValue(s ...string) (err error) {
+	v := a.Variable()
+
+	if a.parsed && a.supplied {
+		return nil
+	}
+
+	var input []string
+
+	if len(s) > 0 {
+		a.supplied = true
+		input = s
+	} else if d := a.Default(); a.HasDefault() {
+		a.supplied = false
+		input = []string{
+			d,
+		}
+	}
+
+	return v.Update(input...)
+}
+
+func (a *argCore[T]) updateMetadata(opts ...Option) {
+	if a.md == nil {
+		a.md = NewMetadata(opts...)
+
+		return
+	}
+
+	a.md.updateMetadata(opts...)
+}
+
+func (a *argCore[T]) Shorthand() string {
+	return a.md.Shorthand()
+}
+
+func (a *argCore[T]) Usage() string {
+	return a.md.Usage()
+}
+
+func (a *argCore[T]) Default() string {
+	return a.md.Default()
+}
+
+func (a *argCore[T]) HasDefault() bool {
+	return a.md.HasDefault()
+}
+
+func (a *argCore[T]) IsRequired() bool {
+	return a.md.IsRequired()
+}
+
+func (a *argCore[T]) IsParsed() bool {
+	return a.parsed
+}
+
+func (a *argCore[T]) IsSupplied() bool {
+	return a.supplied
+}
+
+func (a *argCore[T]) IsRepeatable() bool {
+	return a.repeatable
+}
+
+func (a *argCore[T]) Variable() Variable[T] {
+	return a.v
+}
+
 // Generalize is a helper function for converting some TypedArg[T] -> Arg.
 func Generalize[T any](typed ...TypedArg[T]) []Arg {
 	out := make([]Arg, len(typed))

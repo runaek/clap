@@ -3,7 +3,6 @@ package clap
 import (
 	"fmt"
 	"github.com/runaek/clap/pkg/parse"
-	"go.uber.org/zap"
 	"strings"
 )
 
@@ -110,18 +109,11 @@ func (f Flag) argName() argName {
 // A FlagArg argument of some type T.
 type FlagArg[T any] struct {
 	Key string
-	v   Variable[T]
-	md  *Metadata
-
-	repeatable, supplied, parsed bool
+	*argCore[T]
 }
 
 func (f *FlagArg[T]) argName() argName {
 	return FlagType.getIdentifier(f.Name())
-}
-
-func (f *FlagArg[T]) Default() string {
-	return f.md.Default()
 }
 
 func (f *FlagArg[T]) Name() string {
@@ -132,34 +124,10 @@ func (f *FlagArg[T]) Type() Type {
 	return FlagType
 }
 
-func (f *FlagArg[T]) Usage() string {
-	return f.md.Usage()
-}
-
-func (f *FlagArg[T]) Shorthand() string {
-	return f.md.Shorthand()
-}
-
 func (f *FlagArg[T]) ValueType() string {
 	var zero T
 
 	return strings.TrimPrefix(fmt.Sprintf("%T", zero), "*")
-}
-
-func (f *FlagArg[T]) IsRepeatable() bool {
-	return f.repeatable
-}
-
-func (f *FlagArg[T]) IsRequired() bool {
-	return f.md.IsRequired()
-}
-
-func (f *FlagArg[T]) IsParsed() bool {
-	return f.parsed
-}
-
-func (f *FlagArg[T]) IsSupplied() bool {
-	return f.supplied
 }
 
 func (f *FlagArg[T]) Variable() Variable[T] {
@@ -177,66 +145,19 @@ func (f *FlagArg[T]) IsIndicator() bool {
 	}
 }
 
-func (f *FlagArg[T]) HasDefault() bool {
-	return f.md.HasDefault()
-}
+func (f *FlagArg[T]) updateValue(s ...string) error {
 
-func (f *FlagArg[T]) updateValue(s ...string) (err error) {
-	v := f.Variable()
+	if err := f.argCore.updateValue(s...); err == nil {
+		f.argCore.parsed = true
 
-	log.Debug("Updating FlagArg argument value",
-		zap.String("flag_name", f.Name()),
-		zap.String("flag_type", f.ValueType()),
-		zap.String("parser_type", fmt.Sprintf("%T", v.Parser())),
-		zap.Strings("input", s),
-		zap.Bool("parsed", f.parsed))
-
-	if f.parsed {
-		return nil
-	}
-
-	defer func() {
-		if err == nil {
-			f.parsed = true
-
-			if f.IsIndicator() {
-				if len(s) == 1 && s[0] != f.Default() {
-					f.supplied = true
-				}
-			} else {
-				if len(s) > 0 {
-					f.supplied = true
-				}
+		if f.IsIndicator() {
+			if len(s) == 1 && s[0] == f.Default() {
+				f.argCore.supplied = false
 			}
-		} else {
-			log.Warn("Error updating FlagArg argument value",
-				zap.String("flag_name", f.Name()),
-				zap.String("flag_type", f.ValueType()),
-				zap.Error(err))
 		}
-	}()
-
-	var input []string
-
-	if len(s) > 0 {
-		input = s
-	} else if f.HasDefault() {
-		input = []string{
-			f.Default(),
-		}
+	} else {
+		return err
 	}
-
-	return v.Update(input...)
-}
-
-func (f *FlagArg[T]) updateMetadata(opts ...Option) {
-	if f.md == nil {
-		f.md = NewMetadata(opts...)
-
-		return
-	}
-
-	f.md.updateMetadata(opts...)
 }
 
 func (f *FlagArg[T]) isFlagArg() {}
