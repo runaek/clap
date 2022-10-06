@@ -100,6 +100,13 @@ func newArgCore[T any](v *T, parser parse.Parser[T], options ...Option) *argCore
 	}
 }
 
+func newArgCoreUsing[T any](v Variable[T], options ...Option) *argCore[T] {
+	return &argCore[T]{
+		v:  v,
+		md: NewMetadata(options...),
+	}
+}
+
 // argCore contains the underlying Variable[T] and *Metadata for an Arg.
 type argCore[T any] struct {
 	v  Variable[T]

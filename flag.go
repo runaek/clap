@@ -3,7 +3,6 @@ package clap
 import (
 	"fmt"
 	"github.com/runaek/clap/pkg/parse"
-	"strings"
 )
 
 // IFlag is the interface satisfied by a FlagArg.
@@ -55,16 +54,20 @@ func NewFlagP[T any](val *T, name string, shorthand string, parser parse.Parser[
 
 // FlagUsingVariable is a constructor for a FlagArg using a Id and some Variable.
 func FlagUsingVariable[T any](name string, v Variable[T], opts ...Option) *FlagArg[T] {
-	md := NewMetadata(opts...)
 
-	if md.Usage() == "" {
+	if md := NewMetadata(opts...); md.Usage() == "" {
 		var zero T
-		md.argUsage = fmt.Sprintf("%s - a %T flag variable.", name, zero)
+		opts = append(opts, WithUsage(fmt.Sprintf("%s - a %T flag variable.", name, zero)))
 	}
+
 	f := &FlagArg[T]{
-		Key: name,
-		md:  md,
-		v:   v,
+		Key:     name,
+		argCore: newArgCoreUsing[T](v, opts...),
+	}
+
+	if f.Usage() == "" {
+		var zero T
+		f.argCore.md.argUsage = fmt.Sprintf("%s - a %T flag variable.", name, zero)
 	}
 
 	var zero T
@@ -81,17 +84,15 @@ func FlagUsingVariable[T any](name string, v Variable[T], opts ...Option) *FlagA
 
 // FlagsUsingVariable is a constructor for a repeatable FlagArg using a Id and some Variable.
 func FlagsUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *FlagArg[[]T] {
-	md := NewMetadata(opts...)
 
-	if md.Usage() == "" {
+	if md := NewMetadata(opts...); md.Usage() == "" {
 		var zero T
-		md.argUsage = fmt.Sprintf("%s - a repeatable %T flag variable.", name, zero)
+		opts = append(opts, WithUsage(fmt.Sprintf("%s - a repeatable %T flag variable.", name, zero)))
 	}
 
 	f := &FlagArg[[]T]{
-		Key: name,
-		md:  md,
-		v:   v,
+		Key:     name,
+		argCore: newArgCoreUsing[[]T](v, opts...),
 	}
 
 	f.repeatable = true
@@ -124,11 +125,11 @@ func (f *FlagArg[T]) Type() Type {
 	return FlagType
 }
 
-func (f *FlagArg[T]) ValueType() string {
-	var zero T
-
-	return strings.TrimPrefix(fmt.Sprintf("%T", zero), "*")
-}
+// func (f *FlagArg[T]) ValueType() string {
+// 	var zero T
+//
+// 	return strings.TrimPrefix(fmt.Sprintf("%T", zero), "*")
+// }
 
 func (f *FlagArg[T]) Variable() Variable[T] {
 	return f.v
@@ -158,6 +159,8 @@ func (f *FlagArg[T]) updateValue(s ...string) error {
 	} else {
 		return err
 	}
+
+	return nil
 }
 
 func (f *FlagArg[T]) isFlagArg() {}
