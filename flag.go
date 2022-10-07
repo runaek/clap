@@ -90,9 +90,12 @@ func FlagsUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *Fl
 		opts = append(opts, WithUsage(fmt.Sprintf("%s - a repeatable %T flag variable.", name, zero)))
 	}
 
+	core := newArgCoreUsing[[]T](v, opts...)
+	core.repeatable = true
+
 	f := &FlagArg[[]T]{
 		Key:     name,
-		argCore: newArgCoreUsing[[]T](v, opts...),
+		argCore: core,
 	}
 
 	f.repeatable = true
@@ -123,16 +126,6 @@ func (f *FlagArg[T]) Name() string {
 
 func (f *FlagArg[T]) Type() Type {
 	return FlagType
-}
-
-// func (f *FlagArg[T]) ValueType() string {
-// 	var zero T
-//
-// 	return strings.TrimPrefix(fmt.Sprintf("%T", zero), "*")
-// }
-
-func (f *FlagArg[T]) Variable() Variable[T] {
-	return f.v
 }
 
 func (f *FlagArg[T]) IsIndicator() bool {

@@ -910,7 +910,7 @@ func (p *Parser) parse() {
 
 		// if strict-mode: add the error to the final pErr
 		// otherwise, we just need to update the state of the Arg
-		if p.Strict || a.IsRequired() {
+		if !a.IsSupplied() && (p.Strict || a.IsRequired()) {
 			p.pErr = multierror.Append(p.pErr, fmt.Errorf("%w: %s (%s)", ErrMissing, a.Name(), a.Type()))
 		}
 

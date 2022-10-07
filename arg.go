@@ -115,7 +115,7 @@ type argCore[T any] struct {
 	repeatable, supplied, parsed bool
 }
 
-func (a *argCore[T]) updateValue(s ...string) (err error) {
+func (a *argCore[T]) updateValue(s ...string) error {
 	v := a.Variable()
 
 	if a.parsed && a.supplied {
@@ -134,7 +134,13 @@ func (a *argCore[T]) updateValue(s ...string) (err error) {
 		}
 	}
 
-	return v.Update(input...)
+	if err := v.Update(input...); err != nil {
+		return err
+	}
+
+	a.parsed = true
+
+	return nil
 }
 
 func (a *argCore[T]) updateMetadata(opts ...Option) {

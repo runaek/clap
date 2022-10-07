@@ -3,8 +3,6 @@ package clap
 import (
 	"fmt"
 	"github.com/runaek/clap/pkg/parse"
-	"go.uber.org/zap"
-	"strings"
 )
 
 // IKeyValue is the interface satisfied by a KeyValueArg.
@@ -36,17 +34,15 @@ func NewKeyValues[T any](variables *[]T, name string, p parse.Parser[T], opts ..
 
 // KeyValueUsingVariable allows a KeyValueArg to be constructed using a Variable.
 func KeyValueUsingVariable[T any](name string, v Variable[T], opts ...Option) *KeyValueArg[T] {
-	md := NewMetadata(opts...)
 
-	if md.Usage() == "" {
+	if md := NewMetadata(opts...); md.Usage() == "" {
 		var zero T
-		md.argUsage = fmt.Sprintf("%s - a %T key-value variable.", name, zero)
+		opts = append(opts, WithUsage(fmt.Sprintf("%s - a %T key-value variable.", name, zero)))
 	}
 
 	kv := &KeyValueArg[T]{
-		Key: name,
-		md:  md,
-		v:   v,
+		Key:     name,
+		argCore: newArgCoreUsing[T](v, opts...),
 	}
 
 	return kv
@@ -54,17 +50,18 @@ func KeyValueUsingVariable[T any](name string, v Variable[T], opts ...Option) *K
 
 // KeyValuesUsingVariable allows a repeatable KeyValueArg to be constructed using Variable.
 func KeyValuesUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *KeyValueArg[[]T] {
-	md := NewMetadata(opts...)
 
-	if md.Usage() == "" {
+	if md := NewMetadata(opts...); md.Usage() == "" {
 		var zero T
-		md.argUsage = fmt.Sprintf("%s - a %T key-value variable.", name, zero)
+		opts = append(opts, WithUsage(fmt.Sprintf("%s - a repeatable %T key-value variable.", name, zero)))
 	}
+
+	core := newArgCoreUsing[[]T](v, opts...)
+	core.repeatable = true
+
 	kv := &KeyValueArg[[]T]{
-		Key:        name,
-		md:         md,
-		v:          v,
-		repeatable: true,
+		Key:     name,
+		argCore: core,
 	}
 
 	return kv
@@ -83,18 +80,11 @@ func (k Key) argName() argName {
 // Should be created by the functions: NewKeyValue, NewKeyValues, KeyValueUsingVariable and KeyValuesUsingVariable.
 type KeyValueArg[T any] struct {
 	Key string
-	md  *Metadata
-	v   Variable[T]
-
-	repeatable, supplied, parsed bool
+	*argCore[T]
 }
 
 func (k *KeyValueArg[T]) argName() argName {
 	return KeyValueType.getIdentifier(k.Name())
-}
-
-func (k *KeyValueArg[T]) Default() string {
-	return k.md.Default()
 }
 
 func (k *KeyValueArg[T]) Name() string {
@@ -103,94 +93,6 @@ func (k *KeyValueArg[T]) Name() string {
 
 func (k *KeyValueArg[T]) Type() Type {
 	return KeyValueType
-}
-
-func (k *KeyValueArg[T]) Usage() string {
-	return k.md.Usage()
-}
-
-func (k *KeyValueArg[T]) Shorthand() string {
-	return k.md.Shorthand()
-}
-
-func (k *KeyValueArg[T]) ValueType() string {
-	var zero T
-
-	return strings.TrimPrefix(fmt.Sprintf("%T", zero), "*")
-}
-
-func (k *KeyValueArg[T]) IsRepeatable() bool {
-	return k.repeatable
-}
-
-func (k *KeyValueArg[T]) IsRequired() bool {
-	return k.md.IsRequired()
-}
-
-func (k *KeyValueArg[T]) IsParsed() bool {
-	return k.parsed
-}
-
-func (k *KeyValueArg[T]) IsSupplied() bool {
-	return k.supplied
-}
-
-func (k *KeyValueArg[T]) Variable() Variable[T] {
-	return k.v
-}
-
-func (k *KeyValueArg[T]) HasDefault() bool {
-	return k.md.HasDefault()
-}
-
-func (k *KeyValueArg[T]) updateMetadata(opts ...Option) {
-	if k.md == nil {
-		k.md = NewMetadata(opts...)
-
-		return
-	}
-	k.md.updateMetadata(opts...)
-}
-
-func (k *KeyValueArg[T]) updateValue(s ...string) (err error) {
-	v := k.Variable()
-
-	log.Debug("Updating Key Value argument value",
-		zap.String("kv_name", k.Name()),
-		zap.String("kv_type", k.ValueType()),
-		zap.String("parser_type", fmt.Sprintf("%T", v.Parser())),
-		zap.Strings("input", s),
-		zap.Bool("parsed", k.parsed))
-
-	if k.parsed {
-		return nil
-	}
-
-	defer func() {
-		if err == nil {
-			k.parsed = true
-			if len(s) > 0 && s[0] != "" {
-				k.supplied = true
-			}
-		} else {
-			log.Warn("Error updating Key Value argument value",
-				zap.String("kv_name", k.Name()),
-				zap.String("kv_type", k.ValueType()),
-				zap.Error(err))
-		}
-	}()
-
-	var input []string
-
-	if len(s) > 0 {
-		input = s
-	} else if k.HasDefault() {
-		input = []string{
-			k.Default(),
-		}
-	}
-
-	return v.Update(input...)
 }
 
 func (_ *KeyValueArg[T]) isKeyValueArg() {}
