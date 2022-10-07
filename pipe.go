@@ -84,6 +84,7 @@ func (_ Pipe) argName() argName {
 // PipeArg represents *the* (there can only be a single PipeArg defined per Parser) command-line inpu provided from the
 // Stdout of another program.
 type PipeArg[T any] struct {
+	// TODO: refactor to use *argCore.
 	piper Piper
 	input FileReader
 	md    *Metadata
