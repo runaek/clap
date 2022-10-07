@@ -9,13 +9,16 @@ import (
 
 //go:generate mockgen -destination=mocks.go -copyright_file=internal/mock_header.txt -package=clap github.com/runaek/clap FileReader,FileWriter,FileInfo,PositionalDeriver,KeyValueDeriver,FlagDeriver
 
-// Arg is the shared behaviour of all command-line input types (FlagType, KeyValueType and PositionType). It essentially
-// exposes an API similar to the behaviour seen in the standard 'flags' package, extending support to key-value and
-// positional arguments.
+// Arg is the shared behaviour of all command-line input types (FlagType,
+// KeyValueType and PositionType). It essentially exposes an API similar to the
+// behaviour seen in the standard 'flags' package, extending support to
+// key-value and positional arguments.
 //
-// Metadata is attached to each Arg giving each arg some mutable properties which can be managed via Option(s).
+// Metadata is attached to each Arg giving each arg some mutable properties
+// which can be managed via Option(s).
 //
-// Each Arg has its own go-argumentVariable which it is responsible for updating:
+// Each Arg has its own go-argumentVariable which it is responsible for
+// updating:
 //
 //  import (
 // 		. "github.com/runaek/clap"
@@ -25,8 +28,10 @@ import (
 //	var (
 //		strVal string
 //		numVal int
-//		myArg = NewKeyValue[string](&strVal, "arg1", parse.String, <options>...) // arg1=Test123 => strVal=Test123
-//		numFlag = NewFlag[int](&numVal, "amount", parse.Int, <options>...)       // --amount=123 => numVal=123
+// 		// arg1=Test123 => strVal=Test123
+//		myArg = NewKeyValue[string](&strVal, "arg1", parse.String, <options>...)
+//		// --amount=123 => numVal=123
+//		numFlag = NewFlag[int](&numVal, "amount", parse.Int, <options>...)
 //
 //		parser = clap.New("program-Id").
 //				Add(myArg, numFlag).
@@ -46,10 +51,12 @@ type Arg interface {
 
 	Updater
 
-	// Name returns the key/identifier of the Arg, this should be unique for each Type.
+	// Name returns the key/identifier of the Arg, this should be unique for
+	// each Type
 	Name() string
 
-	// Type indicates the type of command-line argument the Arg is, returns one of:
+	// Type indicates the type of command-line argument the Arg is, returns one
+	// of:
 	//
 	// 	> FlagType;
 	//
@@ -60,7 +67,8 @@ type Arg interface {
 	//	> PipeType;
 	Type() Type
 
-	// Shorthand is the single character alias/identifier for the Arg, if applicable
+	// Shorthand is the single character alias/identifier for the Arg, if
+	// applicable
 	//
 	// Can be updated via the WithAlias Option
 	Shorthand() string
@@ -199,9 +207,11 @@ func Generalize[T any](typed ...TypedArg[T]) []Arg {
 	return out
 }
 
-// TypedArg is the generic interface that is satisfied by all Arg implementations.
+// TypedArg is the generic interface that is satisfied by all Arg
+// implementations.
 //
-// This is a convenience interface that provides access to the underlying generic Variable.
+// This is a convenience interface that provides access to the underlying
+// generic Variable.
 type TypedArg[T any] interface {
 	Arg
 	// Variable returns the underlying Variable for the Arg
@@ -214,12 +224,12 @@ type Identifier interface {
 	argName() argName
 }
 
-// NameOf is a helper function for getting the name of an Arg from an Identifier.
+// NameOf returns the name of an Arg from an Identifier.
 func NameOf(id Identifier) string {
 	return id.argName().Name()
 }
 
-// TypeOf is a helper function for getting the type of Arg from an Identifier.
+// TypeOf returns the type of Arg from an Identifier.
 func TypeOf(id Identifier) Type {
 	return id.argName().Type()
 }
@@ -228,7 +238,7 @@ const (
 	ErrInvalidType Error = "invalid type"
 )
 
-// ValueOf is a helper function for retrieving the value of an Arg.
+// ValueOf returns the typed value of an Arg.
 func ValueOf[T any](arg Arg) (T, error) {
 	var zero T
 
@@ -239,7 +249,7 @@ func ValueOf[T any](arg Arg) (T, error) {
 	return zero, fmt.Errorf("%w: unable to read %T value from %T", ErrInvalidType, zero, arg)
 }
 
-// ReferenceTo is a helper function for retrieving a reference to the value for an Arg.
+// ReferenceTo returns a reference to the value for an Arg.
 func ReferenceTo[T any](arg Arg) (*T, error) {
 	if arg == nil {
 		return nil, errors.New("nil reference")
@@ -254,8 +264,9 @@ func ReferenceTo[T any](arg Arg) (*T, error) {
 	return nil, fmt.Errorf("%w: unable to reference variable of type %T from %T", ErrInvalidType, zero, arg)
 }
 
-// Updater is the shared private behaviour shared by all Arg which allows mutable *Metadata fields to be updated
-// and the underlying value/variable of an Arg to be updated.
+// Updater is the shared private behaviour shared by all Arg which allows
+// mutable *Metadata fields to be updated and the underlying value/variable of
+// an Arg to be updated.
 type Updater interface {
 	updateValue(...string) error
 	updateMetadata(...Option)
@@ -269,7 +280,8 @@ func UpdateValue(u Updater, input ...string) error {
 	return u.updateValue(input...)
 }
 
-// UpdateMetadata is the public helper function to update the Metadata of some Arg.
+// UpdateMetadata is the public helper function to update the Metadata of some
+// Arg.
 func UpdateMetadata(u Updater, options ...Option) {
 	u.updateMetadata(options...)
 }
@@ -308,7 +320,8 @@ func (id argName) argName() argName {
 	return id
 }
 
-// ValidateDefaultValue is a helper function for retrieving and attempting to parse the actual typed default value
+// ValidateDefaultValue is a helper function for retrieving and attempting to
+// parse the actual typed default value
 // of an Arg.
 func ValidateDefaultValue[T any](arg TypedArg[T]) (T, error) {
 	var zero T
@@ -337,7 +350,8 @@ func ValidateDefaultValue[T any](arg TypedArg[T]) (T, error) {
 	return val, nil
 }
 
-// Type indicates the 'type' of input being processed (either a flag, key-value argument or a positional argument).
+// Type indicates the 'type' of input being processed (either a flag, key-value
+// argument or a positional argument).
 type Type int
 
 func (t Type) String() string {

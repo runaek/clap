@@ -22,10 +22,11 @@ func NewKeyValue[T any](variable *T, name string, p parse.Parser[T], opts ...Opt
 	return KeyValueUsingVariable[T](name, v, opts...)
 }
 
-// NewKeyValues is a constructor for a repeatable key-valued arguments from the command-line.
+// NewKeyValues is a constructor for a repeatable key-valued arguments from the
+// command-line.
 //
-// Automatically converts the Func[T] into a Func[[]T] via parse.Slice - use KeyValuesUsingVariable
-// to be able to change this behaviour as required.
+// Automatically converts the Func[T] into a Func[[]T] via parse.Slice - use
+// KeyValuesUsingVariable to be able to change this behaviour as required.
 func NewKeyValues[T any](variables *[]T, name string, p parse.Parser[T], opts ...Option) *KeyValueArg[[]T] {
 	v := NewVariables[T](variables, p)
 
@@ -48,7 +49,8 @@ func KeyValueUsingVariable[T any](name string, v Variable[T], opts ...Option) *K
 	return kv
 }
 
-// KeyValuesUsingVariable allows a repeatable KeyValueArg to be constructed using Variable.
+// KeyValuesUsingVariable allows a repeatable KeyValueArg to be constructed
+// using a Variable.
 func KeyValuesUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *KeyValueArg[[]T] {
 
 	if md := NewMetadata(opts...); md.Usage() == "" {
@@ -74,10 +76,11 @@ func (k Key) argName() argName {
 	return KeyValueType.getIdentifier(string(k))
 }
 
-// A KeyValueArg represents a key=value argument where the key is a string and the value is a string representation for
-// some type T.
+// A KeyValueArg represents a key=value argument where the key is a string and
+// the value is a string representation for some type T.
 //
-// Should be created by the functions: NewKeyValue, NewKeyValues, KeyValueUsingVariable and KeyValuesUsingVariable.
+// Should be created by the functions: NewKeyValue, NewKeyValues,
+// KeyValueUsingVariable and KeyValuesUsingVariable.
 type KeyValueArg[T any] struct {
 	Key string
 	*argCore[T]

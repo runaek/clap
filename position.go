@@ -9,8 +9,8 @@ import (
 type IPositional interface {
 	Arg
 
-	// Index returns the index (position) of the PositionalArg (or the starting index of the remaining args if
-	// ArgRemaining is true)
+	// Index returns the index (position) of the PositionalArg (or the starting
+	// index of the remaining args if ArgRemaining is true)
 	Index() int
 
 	isPositionalArg()
@@ -21,7 +21,8 @@ func NewPosition[T any](variable *T, index int, parser parse.Parser[T], opts ...
 	return PositionUsingVariable[T](index, NewVariable[T](variable, parser), opts...)
 }
 
-// NewPositions is a constructor for a number of positional arguments starting from some index.
+// NewPositions is a constructor for a number of positional arguments starting
+// from some index.
 func NewPositions[T any](variables *[]T, fromIndex int, parser parse.Parser[T], opts ...Option) *PositionalArg[[]T] {
 	return PositionsUsingVariable[T](fromIndex, NewVariable[[]T](variables, parse.Slice[T](parser)), opts...)
 }
@@ -69,7 +70,8 @@ var positionOptions = []Option{
 	withDefaultDisabled(),
 }
 
-// A PositionalArg represents a particular index (or indexes) of positional arguments representing some type T.
+// A PositionalArg represents a particular index (or indexes) of positional
+// arguments representing some type T.
 //
 // Should be created by the NewPosition and NewPositions functions.
 type PositionalArg[T any] struct {

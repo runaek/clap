@@ -18,8 +18,8 @@ const (
 
 // Error is a simple indicator for some error that occurs.
 //
-// The value of the error should indicate the 'cause' of the problem and context should be provided by the returning
-// process.
+// The value of the error should indicate the 'cause' of the problem and context
+// should be provided by the returning process.
 type Error string
 
 func (err Error) Error() string {
@@ -66,7 +66,8 @@ func ErrParsing(id Identifier, cause error) *ParseError {
 	}
 }
 
-// ParseError indicates that an error occurred parsing the variable for some argument.
+// ParseError indicates that an error occurred parsing the variable for some
+// argument.
 type ParseError struct {
 	Id    Identifier
 	Cause error

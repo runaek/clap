@@ -9,7 +9,8 @@ import (
 type IFlag interface {
 	Arg
 
-	// IsIndicator returns true if the FlagArg does not require a value (e.g. a bool or C)
+	// IsIndicator returns true if the FlagArg does not require a value (e.g. a
+	// bool or C)
 	IsIndicator() bool
 
 	// HasDefault returns true if the flag has a defined default string value
@@ -18,7 +19,8 @@ type IFlag interface {
 	isFlagArg()
 }
 
-// Help is a constructor for some *FlagArg[bool] (identified by '--help'/'-h') type.
+// Help is a constructor for some *FlagArg[bool] (identified by '--help'/'-h')
+// type.
 func Help(helpRequested *bool, desc string) *FlagArg[bool] {
 	if desc == "" {
 		desc = "Display the help-text for a command or program."
@@ -82,7 +84,8 @@ func FlagUsingVariable[T any](name string, v Variable[T], opts ...Option) *FlagA
 	return f
 }
 
-// FlagsUsingVariable is a constructor for a repeatable FlagArg using a Id and some Variable.
+// FlagsUsingVariable is a constructor for a repeatable FlagArg using an Id and
+// some Variable.
 func FlagsUsingVariable[T any](name string, v Variable[[]T], opts ...Option) *FlagArg[[]T] {
 
 	if md := NewMetadata(opts...); md.Usage() == "" {

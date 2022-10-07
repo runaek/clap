@@ -103,7 +103,8 @@ func (s *Set) Get(id Identifier) Arg {
 	return nil
 }
 
-// ByShorthand returns the Arg for the given shorthand identifier, if it exists, otherwise nil.
+// ByShorthand returns the Arg for the given shorthand identifier, if it exists,
+// otherwise nil.
 func (s *Set) ByShorthand(sh string) Arg {
 	if sh == "" {
 		return nil
@@ -122,7 +123,8 @@ func (s *Set) ByShorthand(sh string) Arg {
 	return s.Get(id)
 }
 
-// Flag returns the flag for the given Id/identifier, if it exists, otherwise nil.
+// Flag returns the flag for the given Id/identifier, if it exists, otherwise
+// nil.
 func (s *Set) Flag(name string) IFlag {
 	if f, exists := s.flags[name]; exists {
 		return f
@@ -170,7 +172,8 @@ func (s *Set) AddFlag(f IFlag, opts ...Option) error {
 	return nil
 }
 
-// Key returns the key-value argument for the given Id/identifier, if it exists, otherwise nil.
+// Key returns the key-value argument for the given Id/identifier, if it exists,
+// otherwise nil.
 func (s *Set) Key(name string) IKeyValue {
 	if f, exists := s.keys[name]; exists {
 		return f
@@ -217,7 +220,8 @@ func (s *Set) AddKeyValue(kv IKeyValue, opts ...Option) error {
 	return nil
 }
 
-// Pos returns the positional argument at the supplied index, if it exists, otherwise nil.
+// Pos returns the positional argument at the supplied index, if it exists,
+// otherwise nil.
 func (s *Set) Pos(index int) IPositional { // nolint: ireturn
 	k, exists := s.posArgs[index]
 
@@ -228,7 +232,8 @@ func (s *Set) Pos(index int) IPositional { // nolint: ireturn
 	return s.positions.Get(k)
 }
 
-// PosS is a wrapper around Pos which accepts a string representation of the integer position.
+// PosS is a wrapper around Pos which accepts a string representation of the
+// integer position.
 func (s *Set) PosS(sindex string) IPositional {
 	i, _ := strconv.ParseInt(sindex, 10, 64)
 
@@ -242,7 +247,8 @@ func (s *Set) Positions() []IPositional {
 
 // AddPosition adds a positional argument to the Set.
 //
-// The Set expects positional arguments to be supplied in order and returns a wrapped ErrInvalidIndex if arguments
+// The Set expects positional arguments to be supplied in order and returns a
+// wrapped ErrInvalidIndex if arguments
 // are specified in an invalid order.
 func (s *Set) AddPosition(a IPositional, opts ...Option) error {
 	index := a.Index()
@@ -303,7 +309,8 @@ func (s *Set) AddPipe(p IPipe, opts ...Option) error {
 	return nil
 }
 
-// argMap is a collection of Arg implementations (of the same Type), indexed by their Id
+// argMap is a collection of Arg implementations (of the same Type), indexed by
+// their Id.
 type argMap[A Arg] map[string]A
 
 // List returns all the Arg(s) within the collection.
