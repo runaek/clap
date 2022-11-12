@@ -241,6 +241,7 @@ func (p *PipeArg[T]) updateValue(_ ...string) error {
 			}
 		}
 		p.data = fullData
+		log.Debug("Read Pipe argument data.", zap.String("data", string(p.data)))
 	}
 
 	dat := bytes.NewReader(fullData)
@@ -251,6 +252,7 @@ func (p *PipeArg[T]) updateValue(_ ...string) error {
 		return err
 	}
 
+	log.Debug("Updating Pipe argument value.", zap.Strings("values", inputs))
 	if err := p.v.Update(inputs...); err != nil {
 		return err
 	} else {

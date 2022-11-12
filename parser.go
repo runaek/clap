@@ -784,6 +784,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 // NOTE: assumes that input has already been scanned
 func (p *Parser) parse() {
 	if pipe := p.Pipe(); pipe != nil && pipe.IsSupplied() {
+		log.Info("Parsing Pipe argument.")
 		if err := pipe.updateValue(); err != nil {
 			p.updateState(pipe, err)
 
@@ -815,6 +816,7 @@ func (p *Parser) parse() {
 
 			variadicValues = append(variadicValues, v)
 		} else {
+			log.Debug("Updating positional argument value.", zap.String("arg", pA.Name()), zap.String("value", v))
 			if err := pA.updateValue(v); err != nil {
 				p.updateState(pA, err)
 
@@ -827,8 +829,7 @@ func (p *Parser) parse() {
 
 	if variadicIndex > 0 {
 		variadicPosArg := p.Pos(variadicIndex)
-		log.Debug("Updating variadic positional arguments", zap.Strings("vals", variadicValues))
-
+		log.Debug("Updating variadic positional arguments.", zap.String("arg", variadicPosArg.Name()), zap.Strings("values", variadicValues))
 		if err := variadicPosArg.updateValue(variadicValues...); err != nil {
 			p.updateState(variadicPosArg, err)
 
@@ -848,7 +849,7 @@ func (p *Parser) parse() {
 
 			continue
 		}
-
+		log.Debug("Updating key-value argument.", zap.String("arg", name), zap.Strings("values", vs))
 		if err := kvA.updateValue(vs...); err != nil {
 			// we always want to update the state to track every Arg that fails,
 			// but we only want to add an error if we are running in strict mode
