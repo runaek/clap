@@ -212,7 +212,7 @@ func (p *Parser) Add(args ...Arg) *Parser {
 			_ = p.AddPipe(arg)
 		default:
 			log.Warn("Unable to add malformed Arg",
-				zap.String("_t", fmt.Sprintf("%T", a)),
+				zap.String("dataType", fmt.Sprintf("%T", a)),
 				zap.String("name", a.Name()),
 				zap.Stringer("type", a.Type()))
 		}
@@ -320,20 +320,19 @@ func (p *Parser) Parse(argv ...string) {
 		}
 
 		if errors.Is(err, ErrHelp) {
-			log.Debug("Help requested")
+			log.Info("Help requested.")
 			p.pErr = multierror.Append(p.pErr, ErrHelp)
 			continue
 		}
 
 		if errors.Is(err, ErrUnidentified) && p.Strict {
 			scanErr := ErrScanning(err, consumed...)
-			log.Warn("Error during token scan", zap.Error(scanErr))
+			log.Warn("Error scanning tokens.", zap.Error(scanErr))
 			p.pErr = multierror.Append(p.pErr, scanErr)
 
 			continue
 		} else if errors.Is(err, ErrUnidentified) {
-			log.Warn("Unidentified argument error suppressed", zap.Error(err))
-
+			log.Warn("Suppressed 'unidentified' error.", zap.Error(err))
 			continue
 		}
 
@@ -343,7 +342,7 @@ func (p *Parser) Parse(argv ...string) {
 			p.pErr = multierror.Append(p.pErr, scanErr)
 		}
 
-		log.Debug("Scanned", zap.Strings("tkns", tkns), zap.Strings("consumed", consumed), zap.Error(err))
+		log.Debug("Scanned tokens.", zap.Strings("tokens", tkns), zap.Strings("consumed", consumed), zap.Error(err))
 	}
 
 	p.parse()
@@ -584,7 +583,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 	// every time scan is called, we will *at least* consume this token
 	consumed = []string{this}
 
-	log.Debug("Scanning input", zap.String("this", this), zap.Strings("next", left))
+	log.Info("Scanning input.", zap.String("this", this), zap.Strings("next", left))
 
 	var argID, argValue string
 	argType := Unrecognised
@@ -605,6 +604,8 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		}
 		this = strings.TrimLeft(this, "-")
 
+		log.Debug("Identified flag argument.")
+
 		fallthrough
 	default:
 		if strings.Contains(this, "=") {
@@ -612,6 +613,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 			// block, if it is still Unrecognised, then it must be a
 			// KeyValueType
 			if argType == Unrecognised {
+				log.Debug("Identified key-value argument.")
 				argType = KeyValueType
 			}
 
@@ -628,6 +630,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		} else if argType == FlagType {
 			argID = this
 		} else if argType == Unrecognised {
+			log.Debug("Identified positional argument.")
 			argType = PositionType
 			argValue = this
 		}
@@ -642,7 +645,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		// explicitly handle the case here and not have to repeat it in the
 		// below block.
 
-		log.Debug("Scanned tokens",
+		log.Info("Token scan completed.",
 			zap.String("arg_id", argID),
 			zap.String("arg_value", argValue),
 			zap.Stringer("arg_type", argType),
