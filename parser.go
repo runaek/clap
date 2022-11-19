@@ -170,6 +170,9 @@ type Parser struct {
 	// the program
 	SuppressValidation bool
 
+	// AllowEmptyArgs prevents os.Args from being used when no arguments are supplied to Parse
+	AllowEmptyArgs bool
+
 	Stdin  FileReader
 	Stdout FileWriter
 	Stderr FileWriter
@@ -285,7 +288,7 @@ func (p *Parser) Parse(argv ...string) {
 		zap.Int("shift", p.Shift),
 		zap.Strings("input", argv))
 
-	if len(argv) == 0 {
+	if len(argv) == 0 && !p.AllowEmptyArgs {
 		log.Debug("Using os.Args", zap.Strings("input", os.Args))
 		argv = os.Args[1+p.Shift:]
 	} else if len(argv) <= p.Shift && len(argv) > 0 {
