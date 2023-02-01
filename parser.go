@@ -887,9 +887,8 @@ func (p *Parser) parse() {
 	for _, a := range p.Args() {
 		log.Debug("Checking Argument", zap.String("name", a.Name()), zap.Stringer("type", a.Type()), zap.String("default", a.Default()))
 
-		if a.IsParsed() {
+		if a.IsParsed() && a.IsSupplied() {
 			p.updateState(a, ok)
-
 			continue
 		}
 
