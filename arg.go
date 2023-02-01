@@ -126,8 +126,10 @@ type argCore[T any] struct {
 func (a *argCore[T]) updateValue(s ...string) error {
 	v := a.Variable()
 
-	if a.parsed && a.supplied {
-		return nil
+	if a.parsed {
+		if a.supplied {
+			return nil
+		}
 	}
 
 	var input []string
