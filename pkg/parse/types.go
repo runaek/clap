@@ -47,6 +47,18 @@ func (_ Strings) Parse(input ...string) ([]string, error) {
 	return input, nil
 }
 
+type CSVStrings struct{}
+
+func (_ CSVStrings) Parse(input ...string) ([]string, error) {
+	var output []string
+
+	for _, i := range input {
+		output = append(output, strings.Split(i, ",")...)
+	}
+
+	return output, nil
+}
+
 // Int is a Parser[int].
 type Int struct{}
 
