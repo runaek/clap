@@ -170,6 +170,9 @@ type Parser struct {
 	// the program
 	SuppressValidation bool
 
+	// AllowEmptyArgs prevents os.Args from being used when no arguments are supplied to Parse
+	AllowEmptyArgs bool
+
 	Stdin  FileReader
 	Stdout FileWriter
 	Stderr FileWriter
@@ -212,7 +215,7 @@ func (p *Parser) Add(args ...Arg) *Parser {
 			_ = p.AddPipe(arg)
 		default:
 			log.Warn("Unable to add malformed Arg",
-				zap.String("_t", fmt.Sprintf("%T", a)),
+				zap.String("dataType", fmt.Sprintf("%T", a)),
 				zap.String("name", a.Name()),
 				zap.Stringer("type", a.Type()))
 		}
@@ -285,7 +288,7 @@ func (p *Parser) Parse(argv ...string) {
 		zap.Int("shift", p.Shift),
 		zap.Strings("input", argv))
 
-	if len(argv) == 0 {
+	if len(argv) == 0 && !p.AllowEmptyArgs {
 		log.Debug("Using os.Args", zap.Strings("input", os.Args))
 		argv = os.Args[1+p.Shift:]
 	} else if len(argv) <= p.Shift && len(argv) > 0 {
@@ -320,20 +323,19 @@ func (p *Parser) Parse(argv ...string) {
 		}
 
 		if errors.Is(err, ErrHelp) {
-			log.Debug("Help requested")
+			log.Info("Help requested.")
 			p.pErr = multierror.Append(p.pErr, ErrHelp)
 			continue
 		}
 
 		if errors.Is(err, ErrUnidentified) && p.Strict {
 			scanErr := ErrScanning(err, consumed...)
-			log.Warn("Error during token scan", zap.Error(scanErr))
+			log.Warn("Error scanning tokens.", zap.Error(scanErr))
 			p.pErr = multierror.Append(p.pErr, scanErr)
 
 			continue
 		} else if errors.Is(err, ErrUnidentified) {
-			log.Warn("Unidentified argument error suppressed", zap.Error(err))
-
+			log.Warn("Suppressed 'unidentified' error.", zap.Error(err))
 			continue
 		}
 
@@ -343,7 +345,7 @@ func (p *Parser) Parse(argv ...string) {
 			p.pErr = multierror.Append(p.pErr, scanErr)
 		}
 
-		log.Debug("Scanned", zap.Strings("tkns", tkns), zap.Strings("consumed", consumed), zap.Error(err))
+		log.Debug("Scanned tokens.", zap.Strings("tokens", tkns), zap.Strings("consumed", consumed), zap.Error(err))
 	}
 
 	p.parse()
@@ -562,15 +564,16 @@ var (
 	ok       = errors.New("ok")
 )
 
-// scan some input for argument tokens (i.e. a positional argument, a key-value argument value or a
-// flag argument value).
+// scan some input for argument tokens (i.e. a positional argument, a key-value
+// argument value or a flag argument value).
 //
-// Returns the tokens that were 'consumed' (successful or not), the remaining un-scanned tokens in
-// the input and any errors associated with scanning the 'consumed' tokens
+// Returns the tokens that were 'consumed' (successful or not), the remaining
+// un-scanned tokens in the input and any errors associated with scanning the
+// 'consumed' tokens
 //
-// NOTE: will *not* recursively call itself, it will scan a single token (1 or 2 elements) and
-// return - it is on the caller to make repeated calls to scan to consume the entire input, which
-// is when scan will return finished.
+// NOTE: will *not* recursively call itself, it will scan a single token (1 or
+// 2 elements) and return - it is on the caller to make repeated calls to scan
+// to consume the entire input, which is when scan will return finished.
 func (p *Parser) scan(input []string) (remaining, consumed []string, err error) {
 	if len(input) < 1 {
 		return nil, nil, finished
@@ -583,7 +586,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 	// every time scan is called, we will *at least* consume this token
 	consumed = []string{this}
 
-	log.Debug("Scanning input", zap.String("this", this), zap.Strings("next", left))
+	log.Info("Scanning input.", zap.String("this", this), zap.Strings("next", left))
 
 	var argID, argValue string
 	argType := Unrecognised
@@ -593,7 +596,8 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 	if this == "-h" || this == "--help" {
 		return left, consumed, ErrHelp
 	}
-	// detect the Type and argID from 'this' and sanitize (additionally, calculated argValue if possible)
+	// detect the Type and argID from 'this' and sanitize (additionally,
+	// calculated argValue if possible)
 	switch this[0] {
 	case '-':
 		// any '-' prefix indicates 'this' is a FlagType
@@ -603,12 +607,16 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		}
 		this = strings.TrimLeft(this, "-")
 
+		log.Debug("Identified flag argument.")
+
 		fallthrough
 	default:
 		if strings.Contains(this, "=") {
-			// argType will be == FlagType if it was detected in the above block, if it is
-			// still Unrecognised, then it must be a KeyValueType
+			// argType will be == FlagType if it was detected in the above
+			// block, if it is still Unrecognised, then it must be a
+			// KeyValueType
 			if argType == Unrecognised {
+				log.Debug("Identified key-value argument.")
 				argType = KeyValueType
 			}
 
@@ -625,6 +633,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 		} else if argType == FlagType {
 			argID = this
 		} else if argType == Unrecognised {
+			log.Debug("Identified positional argument.")
 			argType = PositionType
 			argValue = this
 		}
@@ -635,10 +644,11 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 	}
 
 	defer func() {
-		// At this point, we know what each of the argType is, so we can explicitly handle the case here and not have
-		// to repeat it in the below block.
+		// At this point, we know what each of the argType is, so we can
+		// explicitly handle the case here and not have to repeat it in the
+		// below block.
 
-		log.Debug("Scanned tokens",
+		log.Info("Token scan completed.",
 			zap.String("arg_id", argID),
 			zap.String("arg_value", argValue),
 			zap.Stringer("arg_type", argType),
@@ -658,8 +668,8 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 
 	switch argType {
 	case PositionType:
-		// for Positional argMap, we only care about this specific position and so do not consume any extra values
-		// from the input
+		// for Positional argMap, we only care about this specific position and
+		// so do not consume any extra values from the input
 		argValue = this
 		argID = fmt.Sprintf("%d", len(p.positionalValues)+1)
 
@@ -672,9 +682,11 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 			return left, consumed, fmt.Errorf("%w: no such Key", ErrUnidentified)
 		}
 	case FlagType:
-		// for FlagArg argMap we need to check if we are dealing with a BOOL flag - if we are, then we don't need to
-		// consume any extra input, otherwise we may need to consume some extra input. We also need to check for
-		// combined shorthands (e.g. -nWXyZ may need to be converted into -n -W -X -y -Z)
+		// for FlagArg argMap we need to check if we are dealing with a BOOL
+		// flag - if we are, then we don't need to consume any extra input,
+		// otherwise we may need to consume some extra input. We also need to
+		// check for combined shorthands (e.g. -nWXyZ may need to be converted
+		// into -n -W -X -y -Z)
 
 		fA := p.Flag(argID)
 
@@ -713,14 +725,17 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 			}
 		}
 
-		// flag was supplied like -k=<value> or --key=<value> => no more input to be consumed
+		// flag was supplied like -k=<value> or --key=<value> => no more input
+		// to be consumed
 		if argValueDetected || fA == nil {
 			break
 		}
 
-		// we don't know the argValue yet, but it may be that the Flag is an indicator and doesn't require a value - if
-		// this is the case, we can go and set some sensible defaults if they do not exist (e.g. false for bool flags).
-		// Otherwise, we know we need to consume (or try to) the next token to get the value for the flag
+		// we don't know the argValue yet, but it may be that the Flag is an
+		// indicator and doesn't require a value - if this is the case, we can
+		// go and set some sensible defaults if they do not exist (e.g. false
+		// for bool flags). Otherwise, we know we need to consume (or try to)
+		// the next token to get the value for the flag
 		if fA.IsIndicator() {
 			log.Debug("Handling INDICATOR flag", zap.String("_t", fmt.Sprintf("%T", fA)))
 
@@ -772,6 +787,7 @@ func (p *Parser) scan(input []string) (remaining, consumed []string, err error) 
 // NOTE: assumes that input has already been scanned
 func (p *Parser) parse() {
 	if pipe := p.Pipe(); pipe != nil && pipe.IsSupplied() {
+		log.Info("Parsing Pipe argument.")
 		if err := pipe.updateValue(); err != nil {
 			p.updateState(pipe, err)
 
@@ -803,6 +819,7 @@ func (p *Parser) parse() {
 
 			variadicValues = append(variadicValues, v)
 		} else {
+			log.Debug("Updating positional argument value.", zap.String("arg", pA.Name()), zap.String("value", v))
 			if err := pA.updateValue(v); err != nil {
 				p.updateState(pA, err)
 
@@ -815,8 +832,7 @@ func (p *Parser) parse() {
 
 	if variadicIndex > 0 {
 		variadicPosArg := p.Pos(variadicIndex)
-		log.Debug("Updating variadic positional arguments", zap.Strings("vals", variadicValues))
-
+		log.Debug("Updating variadic positional arguments.", zap.String("arg", variadicPosArg.Name()), zap.Strings("values", variadicValues))
 		if err := variadicPosArg.updateValue(variadicValues...); err != nil {
 			p.updateState(variadicPosArg, err)
 
@@ -829,16 +845,18 @@ func (p *Parser) parse() {
 	for name, vs := range p.keyValues {
 		kvA := p.Key(name)
 
-		// no need to log an error since this would have been noticed during the scan
+		// no need to log an error since this would have been noticed during the
+		// scan
 		if kvA == nil {
 			log.Warn("No such key-value argument to parse", zap.String("name", name), zap.Strings("values", vs))
 
 			continue
 		}
-
+		log.Debug("Updating key-value argument.", zap.String("arg", name), zap.Strings("values", vs))
 		if err := kvA.updateValue(vs...); err != nil {
-			// we always want to update the state to track every Arg that fails, but we only want to add an error if we
-			// are running in strict mode (which prohibits any parser failures) or if the arg is required
+			// we always want to update the state to track every Arg that fails,
+			// but we only want to add an error if we are running in strict mode
+			// (which prohibits any parser failures) or if the arg is required
 			p.updateState(kvA, err)
 			if kvA.IsRequired() || p.Strict {
 				p.pErr = multierror.Append(p.pErr, err)
@@ -849,7 +867,8 @@ func (p *Parser) parse() {
 	for name, vs := range p.flagValues {
 		fA := p.Flag(name)
 
-		// no need to log an error since this would have been noticed during the scan
+		// no need to log an error since this would have been noticed during the
+		// scan
 		if fA == nil {
 			log.Warn("No such flag argument to parse", zap.String("name", name), zap.Strings("values", vs))
 
@@ -868,9 +887,8 @@ func (p *Parser) parse() {
 	for _, a := range p.Args() {
 		log.Debug("Checking Argument", zap.String("name", a.Name()), zap.Stringer("type", a.Type()), zap.String("default", a.Default()))
 
-		if a.IsParsed() {
+		if a.IsParsed() && a.IsSupplied() {
 			p.updateState(a, ok)
-
 			continue
 		}
 
@@ -910,7 +928,7 @@ func (p *Parser) parse() {
 
 		// if strict-mode: add the error to the final pErr
 		// otherwise, we just need to update the state of the Arg
-		if p.Strict || a.IsRequired() {
+		if !a.IsSupplied() && (p.Strict || a.IsRequired()) {
 			p.pErr = multierror.Append(p.pErr, fmt.Errorf("%w: %s (%s)", ErrMissing, a.Name(), a.Type()))
 		}
 
@@ -922,7 +940,8 @@ func (p *Parser) updateState(a Arg, state error) {
 	p.argState[a.argName()] = state
 }
 
-// Complete attaches arguments and flags to the completion Command for autocompletion support.
+// Complete attaches arguments and flags to the completion Command for
+// autocompletion support.
 func (p *Parser) Complete(cmd *complete.Command) {
 	var argPredictions []complete.Predictor
 

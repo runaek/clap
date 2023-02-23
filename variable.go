@@ -6,9 +6,11 @@ import (
 	"os"
 )
 
-// FileWriter represents some type of file-like object that would be used as an output we can write to.
+// FileWriter represents some type of file-like object that would be used as an
+// output we can write to.
 //
-// Usually, in this package, values of this type will be set to os.Stdout by default.
+// Usually, in this package, values of this type will be set to os.Stdout by
+// default.
 type FileWriter interface {
 	io.Writer
 	Stat() (os.FileInfo, error)
@@ -17,20 +19,25 @@ type FileWriter interface {
 
 type FileInfo = os.FileInfo
 
-// FileReader represents some time of file-like object that would be used as an input we can read from.
+// FileReader represents some time of file-like object that would be used as an
+// input we can read from.
 //
-// Usually, in this package, values of this type will be set to os.Stdin by default
+// Usually, in this package, values of this type will be set to os.Stdin by
+// default.
 type FileReader interface {
 	io.Reader
 	Stat() (os.FileInfo, error)
 	Fd() uintptr
 }
 
-// A Variable refers to some program variable that can be parsed from string input.
+// A Variable refers to some program variable that can be parsed from string
+// input.
 //
-// Internally, a Variable uses a Func to parse some string input into the underlying variable.
+// Internally, a Variable uses a Func to parse some string input into the
+// underlying variable.
 type Variable[T any] interface {
-	// Update parses the given input and attempts to update the underlying variable
+	// Update parses the given input and attempts to update the underlying
+	// variable
 	Update(...string) error
 	// Ref returns a reference to the underlying variable
 	Ref() *T
@@ -40,11 +47,14 @@ type Variable[T any] interface {
 	Parser() parse.Parser[T]
 }
 
-// NewVariables is a constructor for a Variable that has an underlying argumentVariable of slice-type.
+// NewVariables is a constructor for a Variable that has an underlying variable
+// of slice-type.
 //
-// This is a helper function which converts the supplied Func into one that supports slices via Slice.
+// This is a helper function which converts the supplied Func into one that
+// supports slices via Slice.
 //
-// A specific Func can be used by creating a Variable using NewVariablesWithParser.
+// A specific Func can be used by creating a Variable using
+// NewVariablesWithParser.
 func NewVariables[T any](variables *[]T, p parse.Parser[T]) Variable[[]T] {
 	if variables == nil {
 		var anon []T
@@ -56,7 +66,8 @@ func NewVariables[T any](variables *[]T, p parse.Parser[T]) Variable[[]T] {
 	}
 }
 
-// NewVariablesWithParser is a constructor for a Variable that has an underlying Func of slice-type.
+// NewVariablesWithParser is a constructor for a Variable that has an underlying
+// Func of slice-type.
 func NewVariablesWithParser[T any](variables *[]T, p parse.Parser[[]T]) Variable[[]T] {
 	return &argumentVariable[[]T]{
 		v: variables,
@@ -75,10 +86,11 @@ func NewVariable[T any](variable *T, p parse.Parser[T]) Variable[T] {
 	}
 }
 
-// argumentVariable wraps some variable of type T and is responsible for updating the underlying value of this variable
-// when required.
+// argumentVariable wraps some variable of type T and is responsible for
+// updating the underlying value of this variable when required.
 //
-// The Parser is responsible for the generating the new value (from string inpu) to be held by the variable.
+// The Parser is responsible for the generating the new value (from string
+// input) to be held by the variable.
 type argumentVariable[T any] struct {
 	v *T              // v is the underlying go-variable being maintained by the argumentVariable
 	p parse.Parser[T] // p is the Parser responsible for creating a new value for the go-variable

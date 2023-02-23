@@ -33,7 +33,8 @@ func AsRequired() Option {
 	}
 }
 
-// withDefaultDisabled is a private Option that is added to every Arg implementation which does not support defaults.
+// withDefaultDisabled is a private Option that is added to every Arg
+// implementation which does not support defaults.
 //
 // Namely, PipeArg and PositionalArg.
 func withDefaultDisabled() Option {

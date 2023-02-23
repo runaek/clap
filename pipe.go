@@ -12,12 +12,14 @@ import (
 	"strings"
 )
 
-// NewLinePipe is a constructor for a PipeArg which reads new lines from a pipe supplied via the command-line.
+// NewLinePipe is a constructor for a PipeArg which reads new lines from a pipe
+// supplied via the command-line.
 func NewLinePipe[T any](variable *T, parser parse.Parser[T], options ...Option) *PipeArg[T] {
 	return NewPipeArg[T](variable, parser, &SeparatedValuePiper{Separator: "\n"}, os.Stdin, options...)
 }
 
-// CSVPipe is a constructor for a PipeArg which reads comma-separated values from a pipe supplied via the command-line.
+// CSVPipe is a constructor for a PipeArg which reads comma-separated values
+// from a pipe supplied via the command-line.
 func CSVPipe[T any](variable *T, parser parse.Parser[T], options ...Option) *PipeArg[T] {
 	return NewPipeArg[T](variable, parser, &SeparatedValuePiper{Separator: ","}, os.Stdin, options...)
 }
@@ -57,10 +59,12 @@ func PipeUsingVariable[T any](piper Piper, input FileReader, v Variable[T], opti
 type IPipe interface {
 	Arg
 
-	// PipeInput returns the FileReader wrapping the underlying input for the pipe - this is usually os.input
+	// PipeInput returns the FileReader wrapping the underlying input for the
+	// pipe - this is usually os.input
 	PipeInput() FileReader
 
-	// PipeDecode decodes the contents of the pipe into string arguments to be parsed later
+	// PipeDecode decodes the contents of the pipe into string arguments to be
+	// parsed later
 	PipeDecode(io.Reader) ([]string, error)
 
 	updateInput(r FileReader)
@@ -81,9 +85,10 @@ func (_ Pipe) argName() argName {
 	return PipeType.getIdentifier(PipeName)
 }
 
-// PipeArg represents *the* (there can only be a single PipeArg defined per Parser) command-line inpu provided from the
-// Stdout of another program.
+// PipeArg represents *the* (there can only be a single PipeArg defined per
+// Parser) command-line inpu provided from the Stdout of another program.
 type PipeArg[T any] struct {
+	// TODO: refactor to use *argCore.
 	piper Piper
 	input FileReader
 	md    *Metadata
@@ -148,7 +153,8 @@ func (p *PipeArg[T]) IsParsed() bool {
 	return p.parsed
 }
 
-// IsSupplied checks if a pipe has been supplied & data has been written to the pipe.
+// IsSupplied checks if a pipe has been supplied & data has been written to the
+// pipe.
 func (p *PipeArg[T]) IsSupplied() (cond bool) {
 	if p.supplied != nil {
 		return *p.supplied
@@ -235,6 +241,7 @@ func (p *PipeArg[T]) updateValue(_ ...string) error {
 			}
 		}
 		p.data = fullData
+		log.Debug("Read Pipe argument data.", zap.String("data", string(p.data)))
 	}
 
 	dat := bytes.NewReader(fullData)
@@ -245,6 +252,7 @@ func (p *PipeArg[T]) updateValue(_ ...string) error {
 		return err
 	}
 
+	log.Debug("Updating Pipe argument value.", zap.Strings("values", inputs))
 	if err := p.v.Update(inputs...); err != nil {
 		return err
 	} else {
@@ -254,7 +262,8 @@ func (p *PipeArg[T]) updateValue(_ ...string) error {
 	return nil
 }
 
-// A Piper is responsible for decoding the data from a pipe into raw command-line arguments
+// A Piper is responsible for decoding the data from a pipe into raw
+// command-line arguments
 type Piper interface {
 	Pipe(in io.Reader) ([]string, error)
 }
